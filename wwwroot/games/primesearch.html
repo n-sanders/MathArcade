@@ -695,25 +695,8 @@
       text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
     }
 
-    .memory-progress {
-      height: 5px;
-      margin: 1.6rem auto 0;
-      overflow: hidden;
-      border-radius: 999px;
-      background: rgba(142, 167, 186, 0.16);
-    }
-
-    .memory-progress-fill {
-      width: 100%;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, var(--cyan), var(--gold));
-      box-shadow: 0 0 12px rgba(101, 230, 255, 0.45);
-      transform-origin: left center;
-    }
-
-    .memory-card.counting .memory-progress-fill {
-      animation: memory-countdown var(--memory-duration, 3000ms) linear forwards;
+    .memory-ready-btn {
+      margin-top: 1.35rem;
     }
 
     .message {
@@ -920,10 +903,6 @@
       animation: stage-shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
     }
 
-    @keyframes memory-countdown {
-      to { transform: scaleX(0); }
-    }
-
     @keyframes number-hit {
       0% { transform: scale(1); }
       22% { transform: scale(0.82); }
@@ -1116,9 +1095,6 @@
         font-size: 1.8rem;
       }
 
-      .memory-progress {
-        margin-top: 1rem;
-      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1145,9 +1121,6 @@
         animation: none !important;
       }
 
-      .memory-card.counting .memory-progress-fill {
-        animation: none;
-      }
     }
   </style>
 </head>
@@ -1215,11 +1188,11 @@
       <section class="memory-card" id="memory-card" aria-labelledby="memory-title" hidden>
         <p class="memory-kicker">Mission briefing</p>
         <h2 id="memory-title">Lock in your targets</h2>
-        <p>Remember these three prime numbers before the lights go out.</p>
+        <p>Study these three primes. When you are ready, start the hunt and the lights will go out.</p>
         <div class="memory-targets" id="memory-targets" role="list" aria-label="Primes to find"></div>
-        <div class="memory-progress" aria-hidden="true">
-          <div class="memory-progress-fill"></div>
-        </div>
+        <button class="primary-button memory-ready-btn" id="memory-ready-btn" type="button">
+          I&apos;m ready — lights out!
+        </button>
       </section>
 
       <div class="effects" id="effects" aria-hidden="true"></div>
@@ -1230,7 +1203,7 @@
           <p class="overlay-kicker" id="overlay-kicker">Night mission</p>
           <h2 id="overlay-title">Prime Search</h2>
           <p class="overlay-copy" id="overlay-copy">
-            Memorize three primes. When the lights go out, sweep the board with your flashlight and find every target.
+            Memorize three primes, then start when you are ready. Sweep the board with your flashlight and find every target.
           </p>
           <p class="overlay-stats" id="overlay-stats" hidden></p>
           <button class="primary-button" id="start-btn" type="button">Start the hunt</button>

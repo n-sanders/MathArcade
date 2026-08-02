@@ -13,6 +13,7 @@
   const fieldEl = document.getElementById("field");
   const memoryCard = document.getElementById("memory-card");
   const memoryTargets = document.getElementById("memory-targets");
+  const memoryReadyBtn = document.getElementById("memory-ready-btn");
   const reminder = document.getElementById("target-reminder");
   const reminderToggle = document.getElementById("reminder-toggle");
   const reminderPanel = document.getElementById("reminder-panel");
@@ -50,7 +51,6 @@
   let pendingSave = Promise.resolve();
 
   // Timers and animation handles
-  let memoryTimer = 0;
   let revealTimer = 0;
   let shakeTimer = 0;
   let flashTimer = 0;
@@ -264,11 +264,9 @@
   }
 
   function clearRoundTimers() {
-    window.clearTimeout(memoryTimer);
     window.clearTimeout(revealTimer);
     window.clearTimeout(shakeTimer);
     window.clearTimeout(flashTimer);
-    memoryTimer = 0;
     revealTimer = 0;
     shakeTimer = 0;
     flashTimer = 0;
@@ -278,7 +276,7 @@
     clearRoundTimers();
     playing = false;
     memoryCard.hidden = true;
-    memoryCard.classList.remove("counting");
+    memoryReadyBtn.disabled = false;
     reminder.hidden = true;
     setReminderOpen(false);
     effectsEl.replaceChildren();
@@ -455,7 +453,7 @@
     }
 
     memoryCard.hidden = true;
-    memoryCard.classList.remove("counting");
+    memoryReadyBtn.disabled = true;
     reminder.hidden = false;
     setReminderOpen(false);
     stage.classList.remove("memorizing");
@@ -518,17 +516,17 @@
     stage.classList.add("memorizing");
     memoryCard.hidden = false;
     reminder.hidden = true;
-    setMessage("Memorize your targets. The lights are about to go out.");
-
-    const memoryMs = Math.max(1900, 3600 - difficulty * 140);
-    memoryCard.style.setProperty("--memory-duration", `${memoryMs}ms`);
-    memoryCard.classList.remove("counting");
-    void memoryCard.offsetWidth;
-    memoryCard.classList.add("counting");
+    memoryReadyBtn.disabled = false;
+    setMessage("Study your targets, then tap I'm ready when you want the lights to go out.");
 
     startBtn.disabled = false;
     startBtn.textContent = "Hunt again";
-    memoryTimer = window.setTimeout(() => beginHunt(activeRound), memoryMs);
+  }
+
+  function onMemoryReady() {
+    if (phase !== "memorizing") return;
+    memoryReadyBtn.disabled = true;
+    beginHunt(roundId);
   }
 
   // Flashlight tracking
@@ -774,6 +772,7 @@
   });
 
   soundToggle.addEventListener("click", toggleSound);
+  memoryReadyBtn.addEventListener("click", onMemoryReady);
   startBtn.addEventListener("click", startGame);
 
   document.addEventListener("visibilitychange", () => {
