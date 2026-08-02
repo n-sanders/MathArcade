@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multiplication Math Maze · MathArcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/games.css" />
+  <style>
+    .maze-room {
+      text-align: center;
+      padding: 1rem 0 0.5rem;
+    }
+    .maze-path {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+    }
+    .maze-problem {
+      font-family: var(--font-display);
+      font-size: clamp(2.4rem, 8vw, 3.8rem);
+      margin: 0.5rem 0 1rem;
+      color: var(--bg-deep);
+    }
+    .branch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+    }
+    .branch {
+      border: 3px solid transparent;
+      border-radius: 16px;
+      background: rgba(18, 102, 120, 0.1);
+      padding: 1.1rem 0.75rem;
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .branch:hover {
+      border-color: var(--coral);
+      transform: translateY(-2px);
+    }
+    .maze-map {
+      display: flex;
+      justify-content: center;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .maze-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(16, 42, 50, 0.2);
+    }
+    .maze-dot.done { background: #1a7a4c; }
+    .maze-dot.current { background: var(--coral); box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.3); }
+  </style>
+</head>
+<body class="game-page">
+  <div class="game-shell">
+    <div class="game-top">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">Multiplication Maze</h1>
+      <div class="hud">
+        <div class="hud-chip" id="score">Score: 0</div>
+        <div class="hud-chip" id="room">Room: 1</div>
+        <div class="hud-chip" id="level">Level: 1</div>
+      </div>
+    </div>
+    <div class="game-stage" id="stage">
+      <div class="overlay" id="overlay">
+        <h2>Math Maze</h2>
+        <p>Each room has a multiplication problem. Pick the correct product to open the next door. Reach the exit!</p>
+        <button class="btn btn-primary" id="start-btn">Enter maze</button>
+      </div>
+      <div class="maze-room">
+        <div class="maze-map" id="map"></div>
+        <p class="maze-path" id="path-label">Room 1 of 6</p>
+        <div class="maze-problem" id="problem">? × ?</div>
+        <div class="branch-grid" id="branches"></div>
+        <p class="message" id="message"></p>
+      </div>
+    </div>
+  </div>
+  <script src="/js/common.js"></script>
+  <script src="/js/maze.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memory Match Math · MathArcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/games.css" />
+  <style>
+    .board {
+      display: grid;
+      gap: 0.65rem;
+      grid-template-columns: repeat(var(--cols, 4), 1fr);
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .card {
+      aspect-ratio: 1;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      perspective: 600px;
+      background: transparent;
+      padding: 0;
+      position: relative;
+    }
+    .card-inner {
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      transition: transform 0.35s ease;
+      transform-style: preserve-3d;
+      box-shadow: 0 6px 0 rgba(16, 42, 50, 0.15);
+    }
+    .card.flipped .card-inner,
+    .card.matched .card-inner {
+      transform: rotateY(180deg);
+    }
+    .face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(0.95rem, 2.8vw, 1.25rem);
+      padding: 0.35rem;
+      text-align: center;
+    }
+    .face.back {
+      background: linear-gradient(145deg, #126678, #0b3d4a);
+      color: #ffd166;
+      font-size: 1.6rem;
+    }
+    .face.front {
+      background: #e8f7f4;
+      color: #102a32;
+      transform: rotateY(180deg);
+      border: 3px solid #1a8a9c;
+    }
+    .card.matched .face.front {
+      background: #d8f3e3;
+      border-color: #1a7a4c;
+    }
+    .family-tag {
+      text-align: center;
+      color: var(--muted);
+      font-weight: 800;
+      margin: 0 0 0.75rem;
+    }
+  </style>
+</head>
+<body class="game-page">
+  <div class="game-shell">
+    <div class="game-top">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">Memory Match Math</h1>
+      <div class="hud">
+        <div class="hud-chip" id="score">Score: 0</div>
+        <div class="hud-chip" id="moves">Moves: 0</div>
+        <div class="hud-chip" id="level">Level: 1</div>
+      </div>
+    </div>
+    <div class="game-stage">
+      <div class="overlay" id="overlay">
+        <h2>Memory Match</h2>
+        <p>Flip cards to match each math problem with its answer. Fewer moves earn a higher score!</p>
+        <button class="btn btn-primary" id="start-btn">Deal cards</button>
+      </div>
+      <p class="family-tag" id="family">Fact family: Addition</p>
+      <div class="board" id="board"></div>
+      <p class="message" id="message"></p>
+    </div>
+  </div>
+  <script src="/js/common.js"></script>
+  <script src="/js/memorymatch.js"></script>
+</body>
+</html>

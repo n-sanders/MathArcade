@@ -1,0 +1,10 @@
+.git
+.vs
+.cursor
+bin
+obj
+data
+*.db
+*.db-*
+README.md
+**/*.md

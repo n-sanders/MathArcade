@@ -1,0 +1,60 @@
+## .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.rsuser
+
+## Build / publish
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+[Bb]uild/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+*.dll
+*.exe
+*.pdb
+*.cache
+!wwwroot/**/*.dll
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Rider / VS Code
+.idea/
+*.sln.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+## Local SQLite DB & secrets (do not ignore /Data — that is C# source)
+*.db
+*.db-shm
+*.db-wal
+appsettings.Development.json
+appsettings.*.local.json
+.env
+.env.*
+
+## OS
+.DS_Store
+Thumbs.db
+Desktop.ini

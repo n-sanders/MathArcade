@@ -1,0 +1,14 @@
+services:
+  matharcade:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Default=Data Source=/data/matharcade.db
+    volumes:
+      - matharcade-data:/data
+    restart: unless-stopped
+
+volumes:
+  matharcade-data:

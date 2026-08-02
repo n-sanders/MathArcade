@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Make 10 · MathArcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/games.css" />
+</head>
+<body class="game-page">
+  <div class="game-shell">
+    <div class="game-top">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">Make 10</h1>
+      <div class="hud">
+        <div class="hud-chip" id="score">Score: 0</div>
+        <div class="hud-chip" id="streak">Streak: 0</div>
+        <div class="hud-chip" id="level">Level: 1</div>
+      </div>
+    </div>
+    <div class="game-stage" id="stage">
+      <div class="overlay" id="overlay">
+        <h2>Make 10</h2>
+        <p>Find the number that adds with the big number to make 10. Build a streak for bonus points!</p>
+        <button class="btn btn-primary" id="start-btn">Start</button>
+      </div>
+      <p class="prompt-label">What adds with this to make 10?</p>
+      <div class="prompt-number" id="prompt">?</div>
+      <div class="choice-grid" id="choices"></div>
+      <p class="message" id="message"></p>
+    </div>
+    <div class="game-actions">
+      <button class="btn btn-secondary" id="end-btn">End round</button>
+    </div>
+  </div>
+  <script src="/js/common.js"></script>
+  <script src="/js/make10.js"></script>
+</body>
+</html>
