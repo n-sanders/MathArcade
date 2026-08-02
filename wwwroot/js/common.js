@@ -13,10 +13,10 @@
     },
     {
       id: "maze",
-      title: "Multiplication Math Maze",
+      title: "Galaxy Maze",
       path: "/games/maze.html",
-      blurb: "Navigate a maze where every doorway is a multiplication problem.",
-      howTo: "Solve each product and pick the correct branch. Only one answer leads forward to the exit."
+      blurb: "Pilot a starship from Sol and follow a signal of alien life across a star maze.",
+      howTo: "Each hyperspace jump needs a multiplication answer. Pick the neighboring star showing the correct product to launch, scan each system for life, and find the living world 10-15 jumps out."
     },
     {
       id: "skipcounting",

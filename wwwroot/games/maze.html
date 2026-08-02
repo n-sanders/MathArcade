@@ -2,91 +2,616 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Multiplication Math Maze · MathArcade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Galaxy Maze · MathArcade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/games.css" />
   <style>
-    .maze-room {
-      text-align: center;
-      padding: 1rem 0 0.5rem;
+    :root {
+      --mz-bg: #050814;
+      --mz-cyan: #22d3ee;
+      --mz-blue: #4f7cff;
+      --mz-purple: #a855f7;
+      --mz-amber: #ffd166;
+      --mz-green: #4ade80;
+      --mz-red: #f87171;
+      --mz-text: #dbeafe;
+      --mz-dim: #64748b;
+      --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+      --font-body: "Nunito", system-ui, sans-serif;
     }
-    .maze-path {
-      font-size: 0.9rem;
-      color: var(--muted);
-      font-weight: 700;
-      margin: 0 0 0.75rem;
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
     }
-    .maze-problem {
-      font-family: var(--font-display);
-      font-size: clamp(2.4rem, 8vw, 3.8rem);
-      margin: 0.5rem 0 1rem;
-      color: var(--bg-deep);
-    }
-    .branch-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 0.75rem;
-    }
-    .branch {
-      border: 3px solid transparent;
-      border-radius: 16px;
-      background: rgba(18, 102, 120, 0.1);
-      padding: 1.1rem 0.75rem;
-      cursor: pointer;
-      font-family: var(--font-display);
-      font-size: 1.4rem;
-      font-weight: 700;
-    }
-    .branch:hover {
-      border-color: var(--coral);
-      transform: translateY(-2px);
-    }
-    .maze-map {
+
+    body {
+      font-family: var(--font-body);
+      background: var(--mz-bg);
+      color: var(--mz-text);
       display: flex;
-      justify-content: center;
-      gap: 0.35rem;
-      margin-bottom: 0.75rem;
-      flex-wrap: wrap;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
-    .maze-dot {
-      width: 14px;
-      height: 14px;
+
+    /* ------------------------------------------------------------ topbar */
+    .mz-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: rgba(5, 8, 20, 0.92);
+      border-bottom: 1px solid rgba(34, 211, 238, 0.15);
+      z-index: 10;
+    }
+
+    .mz-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.9rem;
+      min-width: 0;
+    }
+
+    .back-link {
+      color: var(--mz-dim);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover { color: var(--mz-cyan); }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 3vw, 1.5rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: linear-gradient(90deg, var(--mz-cyan), var(--mz-blue), var(--mz-purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      white-space: nowrap;
+    }
+
+    .hud {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
+    }
+
+    .hud-chip {
+      background: rgba(34, 211, 238, 0.07);
+      border: 1px solid rgba(34, 211, 238, 0.22);
+      border-radius: 999px;
+      padding: 0.35rem 0.8rem;
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: var(--mz-text);
+      white-space: nowrap;
+    }
+
+    .hud-chip .val { color: var(--mz-cyan); }
+
+    /* ------------------------------------------------------------- stage */
+    .mz-stage-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #stage {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 18% 22%, rgba(168, 85, 247, 0.14), transparent 45%),
+        radial-gradient(ellipse at 82% 70%, rgba(79, 124, 255, 0.12), transparent 45%),
+        radial-gradient(ellipse at 55% 8%, rgba(34, 211, 238, 0.08), transparent 40%),
+        var(--mz-bg);
+    }
+
+    #stage.shake { animation: mzShake 0.45s ease; }
+    #stage.shake-big { animation: mzShakeBig 0.8s ease; }
+
+    @keyframes mzShake {
+      10% { transform: translate(-7px, 4px); }
+      25% { transform: translate(6px, -5px); }
+      40% { transform: translate(-5px, -3px); }
+      55% { transform: translate(4px, 4px); }
+      70% { transform: translate(-3px, 2px); }
+      85% { transform: translate(2px, -1px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @keyframes mzShakeBig {
+      8%  { transform: translate(-14px, 8px) rotate(-0.6deg); }
+      20% { transform: translate(12px, -10px) rotate(0.5deg); }
+      34% { transform: translate(-10px, -7px) rotate(-0.4deg); }
+      48% { transform: translate(9px, 8px) rotate(0.3deg); }
+      62% { transform: translate(-7px, 4px); }
+      76% { transform: translate(5px, -3px); }
+      90% { transform: translate(-2px, 2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* --------------------------------------------------------- starfield */
+    #starfield {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .bg-star {
+      position: absolute;
       border-radius: 50%;
-      background: rgba(16, 42, 50, 0.2);
+      background: #fff;
+      animation: twinkle 3s ease-in-out infinite;
     }
-    .maze-dot.done { background: #1a7a4c; }
-    .maze-dot.current { background: var(--coral); box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.3); }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.15; }
+      50% { opacity: 0.9; }
+    }
+
+    /* ------------------------------------------------------------- lanes */
+    #lanes {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .lane {
+      stroke: rgba(100, 116, 139, 0.35);
+      stroke-width: 1.5;
+      stroke-dasharray: 5 6;
+      transition: stroke 0.4s ease;
+    }
+
+    .lane.visited {
+      stroke: rgba(34, 211, 238, 0.85);
+      stroke-width: 2.5;
+      stroke-dasharray: none;
+      filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.7));
+    }
+
+    /* ------------------------------------------------------------- nodes */
+    #nodes {
+      position: absolute;
+      inset: 0;
+    }
+
+    .star-node {
+      position: absolute;
+      width: 58px;
+      height: 58px;
+      margin: -29px 0 0 -29px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .star-node .core {
+      width: var(--size, 14px);
+      height: var(--size, 14px);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffffff, var(--clr, #fff) 70%);
+      box-shadow: 0 0 10px var(--clr, #fff), 0 0 22px rgba(255, 255, 255, 0.25);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      font-size: 22px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .star-node .star-name {
+      position: absolute;
+      top: calc(50% + 15px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7d8aa5;
+      white-space: nowrap;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    }
+
+    .star-node .ring {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 2px solid var(--mz-cyan);
+      border-radius: 50%;
+      opacity: 0;
+    }
+
+    .star-node.current .ring {
+      opacity: 1;
+      animation: ringPulse 1.6s ease-out infinite;
+    }
+
+    .star-node.current .star-name { color: var(--mz-cyan); }
+
+    @keyframes ringPulse {
+      0%   { transform: scale(0.55); opacity: 0.95; }
+      70%  { transform: scale(1.25); opacity: 0; }
+      100% { transform: scale(1.25); opacity: 0; }
+    }
+
+    .star-node.selectable {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .star-node.selectable .core {
+      box-shadow: 0 0 12px var(--clr, #fff), 0 0 26px rgba(34, 211, 238, 0.55);
+    }
+
+    .star-node.selectable:hover .core { transform: scale(1.45); }
+    .star-node.selectable:hover .answer-chip {
+      border-color: var(--mz-cyan);
+      box-shadow: 0 0 16px rgba(34, 211, 238, 0.6);
+    }
+
+    .star-node.pop .core { animation: starPop 0.55s ease; }
+
+    @keyframes starPop {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(2.1); }
+      65%  { transform: scale(0.85); }
+      100% { transform: scale(1); }
+    }
+
+    .star-node.discovered .core {
+      background: none;
+      box-shadow: none;
+      animation: starPop 0.7s ease;
+      filter: drop-shadow(0 0 14px var(--mz-green));
+    }
+
+    /* answer chips ------------------------------------------------------ */
+    .answer-chip {
+      position: absolute;
+      bottom: calc(100% - 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 15, 30, 0.92);
+      border: 2px solid rgba(34, 211, 238, 0.45);
+      color: #e0f2fe;
+      border-radius: 12px;
+      padding: 0.18rem 0.6rem;
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.25);
+      animation: chipIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+      pointer-events: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .answer-chip.below {
+      bottom: auto;
+      top: calc(100% + 4px);
+    }
+
+    .answer-chip.chip-bad {
+      border-color: var(--mz-red);
+      color: var(--mz-red);
+      animation: chipWobble 0.4s ease;
+    }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateX(-50%) scale(0.3); }
+      to   { opacity: 1; transform: translateX(-50%) scale(1); }
+    }
+
+    @keyframes chipWobble {
+      20% { transform: translateX(-50%) rotate(-9deg); }
+      45% { transform: translateX(-50%) rotate(8deg); }
+      70% { transform: translateX(-50%) rotate(-5deg); }
+      100% { transform: translateX(-50%) rotate(0); }
+    }
+
+    /* -------------------------------------------------------------- ship */
+    #ship {
+      position: absolute;
+      z-index: 40;
+      font-size: 26px;
+      line-height: 1;
+      transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+      filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.8));
+      pointer-events: none;
+    }
+
+    #ship.hidden { display: none; }
+
+    #ship.idle-bob { animation: shipBob 2.4s ease-in-out infinite; }
+
+    @keyframes shipBob {
+      0%, 100% { margin-top: 0; }
+      50% { margin-top: -5px; }
+    }
+
+    /* ----------------------------------------------------------- effects */
+    #fx-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 45;
+    }
+
+    .trail-dot {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      margin: -3.5px 0 0 -3.5px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff7cc, #ff9d4a 60%, transparent);
+      animation: trailFade 0.7s ease-out forwards;
+    }
+
+    @keyframes trailFade {
+      from { opacity: 0.95; transform: scale(1); }
+      to   { opacity: 0; transform: scale(0.15); }
+    }
+
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      margin: -4px 0 0 -4px;
+      border-radius: 50%;
+      background: var(--clr, var(--mz-cyan));
+      box-shadow: 0 0 8px var(--clr, var(--mz-cyan));
+      animation: particleFly 0.8s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+    }
+
+    @keyframes particleFly {
+      from { opacity: 1; transform: translate(0, 0) scale(1); }
+      to   { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(0.1); }
+    }
+
+    .score-pop {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--mz-green);
+      text-shadow: 0 0 10px rgba(74, 222, 128, 0.8), 0 2px 4px rgba(0, 0, 0, 0.8);
+      animation: scoreRise 1.1s ease-out forwards;
+      white-space: nowrap;
+    }
+
+    @keyframes scoreRise {
+      from { opacity: 1; margin-top: 0; }
+      70%  { opacity: 1; }
+      to   { opacity: 0; margin-top: -52px; }
+    }
+
+    .scan-ring {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      margin: -22px 0 0 -22px;
+      border: 2px solid var(--mz-green);
+      border-radius: 50%;
+      opacity: 0;
+      animation: scanRing 1.3s ease-out forwards;
+    }
+
+    @keyframes scanRing {
+      0%   { transform: scale(0.2); opacity: 0.95; }
+      100% { transform: scale(5.5); opacity: 0; }
+    }
+
+    #flash {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(248, 113, 113, 0.28), rgba(248, 113, 113, 0.12));
+      opacity: 0;
+      transition: opacity 0.35s ease;
+      pointer-events: none;
+      z-index: 60;
+    }
+
+    #flash.show { opacity: 1; transition: opacity 0.05s ease; }
+
+    #flash.good {
+      background: radial-gradient(circle, rgba(74, 222, 128, 0.2), rgba(34, 211, 238, 0.1));
+    }
+
+    /* --------------------------------------------------------- nav panel */
+    .nav-panel {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(580px, calc(100% - 1.5rem));
+      background: rgba(6, 12, 26, 0.86);
+      border: 1px solid rgba(34, 211, 238, 0.28);
+      border-radius: 16px;
+      padding: 0.55rem 1.2rem 0.7rem;
+      text-align: center;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 211, 238, 0.08);
+      z-index: 70;
+    }
+
+    .nav-label {
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      color: var(--mz-dim);
+      text-transform: uppercase;
+    }
+
+    .nav-problem {
+      font-family: var(--font-display);
+      font-size: clamp(1.7rem, 5.5vw, 2.5rem);
+      font-weight: 600;
+      color: #e0f2fe;
+      text-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
+      line-height: 1.15;
+      margin: 0.1rem 0;
+    }
+
+    .nav-problem.zoom { animation: problemZoom 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    @keyframes problemZoom {
+      from { transform: scale(0.6); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .nav-msg {
+      font-size: 0.92rem;
+      font-weight: 700;
+      min-height: 1.35em;
+      color: var(--mz-dim);
+    }
+
+    .nav-msg.good { color: var(--mz-green); }
+    .nav-msg.bad  { color: var(--mz-red); }
+    .nav-msg.info { color: #7dd3fc; }
+
+    /* ------------------------------------------------------------ overlay */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(3, 6, 15, 0.88);
+      backdrop-filter: blur(5px);
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .overlay.hidden { display: none; }
+
+    .overlay-card {
+      max-width: 500px;
+      text-align: center;
+      animation: cardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: scale(0.8) translateY(20px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .overlay-card .big-emoji {
+      font-size: 3.4rem;
+      line-height: 1;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+
+    .overlay-card h2 {
+      margin: 0 0 0.6rem;
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 5vw, 2.3rem);
+      background: linear-gradient(90deg, var(--mz-cyan), var(--mz-blue), var(--mz-purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .overlay-card p {
+      margin: 0 0 0.5rem;
+      color: var(--mz-text);
+      opacity: 0.9;
+      line-height: 1.45;
+    }
+
+    .overlay-card .sub {
+      font-size: 0.9rem;
+      color: var(--mz-dim);
+    }
+
+    .btn-primary {
+      margin-top: 1rem;
+      border: none;
+      border-radius: 999px;
+      padding: 0.85rem 1.9rem;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #041018;
+      background: linear-gradient(135deg, var(--mz-cyan), var(--mz-blue));
+      box-shadow: 0 0 22px rgba(34, 211, 238, 0.45);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.06);
+      box-shadow: 0 0 32px rgba(34, 211, 238, 0.7);
+    }
+
+    @media (max-width: 560px) {
+      .hud-chip { font-size: 0.72rem; padding: 0.28rem 0.55rem; }
+      .star-node .star-name { font-size: 0.52rem; }
+    }
   </style>
 </head>
-<body class="game-page">
-  <div class="game-shell">
-    <div class="game-top">
+<body>
+  <header class="mz-topbar">
+    <div class="mz-left">
       <a class="back-link" href="/">← Arcade</a>
-      <h1 class="game-title">Multiplication Maze</h1>
-      <div class="hud">
-        <div class="hud-chip" id="score">Score: 0</div>
-        <div class="hud-chip" id="room">Room: 1</div>
-        <div class="hud-chip" id="level">Level: 1</div>
+      <h1 class="game-title">Galaxy Maze</h1>
+    </div>
+    <div class="hud">
+      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip">Jump <span class="val" id="jump">–</span></div>
+      <div class="hud-chip">Level <span class="val" id="level">1</span></div>
+    </div>
+  </header>
+
+  <main class="mz-stage-wrap">
+    <div id="stage">
+      <div id="starfield"></div>
+      <svg id="lanes"></svg>
+      <div id="nodes"></div>
+      <div id="fx-layer"></div>
+      <div id="ship" class="hidden">🚀</div>
+      <div id="flash"></div>
+    </div>
+
+    <div class="nav-panel" id="nav-panel">
+      <div class="nav-label" id="nav-label">NAV COMPUTER</div>
+      <div class="nav-problem" id="nav-problem">SYSTEMS STANDBY</div>
+      <div class="nav-msg" id="nav-msg"></div>
+    </div>
+
+    <div class="overlay" id="overlay">
+      <div class="overlay-card" id="overlay-card">
+        <span class="big-emoji">🛰️</span>
+        <h2>Operation Starseed</h2>
+        <p>Deep-space telescopes picked up a strange signal — hints of <strong>alien life</strong> somewhere in the star network around Sol!</p>
+        <p class="sub">Your nav computer needs a multiplication answer to lock in each hyperspace jump. Pick the star showing the correct product and follow the signal. Somewhere out there, 10 to 15 jumps away, a living world is waiting…</p>
+        <button class="btn-primary" id="start-btn">🚀 Launch mission</button>
       </div>
     </div>
-    <div class="game-stage" id="stage">
-      <div class="overlay" id="overlay">
-        <h2>Math Maze</h2>
-        <p>Each room has a multiplication problem. Pick the correct product to open the next door. Reach the exit!</p>
-        <button class="btn btn-primary" id="start-btn">Enter maze</button>
-      </div>
-      <div class="maze-room">
-        <div class="maze-map" id="map"></div>
-        <p class="maze-path" id="path-label">Room 1 of 6</p>
-        <div class="maze-problem" id="problem">? × ?</div>
-        <div class="branch-grid" id="branches"></div>
-        <p class="message" id="message"></p>
-      </div>
-    </div>
-  </div>
+  </main>
+
   <script src="/js/common.js"></script>
   <script src="/js/maze.js"></script>
 </body>
