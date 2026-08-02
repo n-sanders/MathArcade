@@ -1,142 +1,848 @@
+/* Make 10 — Electric Wire edition.
+ * Drag the live wire from the base number to the node that completes 10.
+ */
 (function () {
+  "use strict";
+
   const GAME_ID = "make10";
-  const promptEl = document.getElementById("prompt");
-  const choicesEl = document.getElementById("choices");
-  const messageEl = document.getElementById("message");
-  const scoreEl = document.getElementById("score");
-  const streakEl = document.getElementById("streak");
-  const levelEl = document.getElementById("level");
+  const BEST_KEY = "matharcade_make10_best";
+
+  // ---------------------------------------------------------------- DOM ----
+  const canvas = document.getElementById("game-canvas");
+  const ctx = canvas.getContext("2d");
+  const stage = document.getElementById("stage");
   const overlay = document.getElementById("overlay");
+  const overlayTitle = overlay.querySelector("h2");
+  const overlayText = overlay.querySelector("p");
+  const overlayStats = document.getElementById("overlay-stats");
   const startBtn = document.getElementById("start-btn");
   const endBtn = document.getElementById("end-btn");
+  const scoreEl = document.getElementById("score");
+  const streakEl = document.getElementById("streak");
+  const bestEl = document.getElementById("best");
+  const streakChip = document.getElementById("streak-chip");
 
+  // -------------------------------------------------------------- colors ---
+  const C = {
+    bg: "#070b14",
+    cyan: "#22d3ee",
+    cyanBright: "#9df6ff",
+    blue: "#4f7cff",
+    purple: "#a855f7",
+    white: "#f0faff",
+    red: "#ff4d5e",
+    redDim: "#8f2530",
+    dim: "#64748b"
+  };
+
+  // --------------------------------------------------------------- state ---
+  let W = 0, H = 0, dpr = 1;
+  let bgCanvas = null; // pre-rendered grid / vignette
+
+  let mode = "idle"; // idle | playing | celebrate | fail | over
   let score = 0;
   let streak = 0;
-  let difficulty = 1;
-  let current = 0;
-  let playing = false;
+  let best = Number(localStorage.getItem(BEST_KEY) || 0);
+  let roundsPlayed = 0;
   let correctCount = 0;
-  let timerId = null;
-  let timeLeft = 0;
+  let lastBase = -1;
 
-  function randInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+  let baseNode = null;   // { value, x, y, r, popT }
+  let nodes = [];        // scattered choice nodes
+  let snapped = null;    // node the wire tip is magnetically held by
+  let lockedNode = null; // node the wire is committed to (celebrate/fail)
+
+  // Wire tip state (spring-ish follow)
+  const tip = { x: 0, y: 0, vx: 0, vy: 0 };
+  const pointer = { x: 0, y: 0, seen: false };
+  let sag = 0, sagV = 0; // spring-smoothed cable sag
+
+  let modeT = 0;         // seconds elapsed in current mode
+  let shake = 0;         // screen-shake amplitude (px)
+  let particles = [];
+  let pulses = [];       // current pulses racing along the wire on success
+  let time = 0;
+  let lastFrame = performance.now();
+
+  // -------------------------------------------------------------- helpers --
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const randInt = (a, b) => Math.floor(rand(a, b + 1));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const dist = (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay);
+
+  function elasticOut(t) {
+    t = clamp(t, 0, 1);
+    if (t === 0 || t === 1) return t;
+    return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
   }
 
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+  // -------------------------------------------------------------- sizing ---
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = stage.clientWidth;
+    H = stage.clientHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    renderBackground();
+    if (baseNode) layoutRound(); // keep nodes on-screen after resize
+  }
+
+  function renderBackground() {
+    bgCanvas = document.createElement("canvas");
+    bgCanvas.width = Math.round(W * dpr);
+    bgCanvas.height = Math.round(H * dpr);
+    const b = bgCanvas.getContext("2d");
+    b.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    b.fillStyle = C.bg;
+    b.fillRect(0, 0, W, H);
+
+    // faint grid
+    b.strokeStyle = "rgba(34, 211, 238, 0.045)";
+    b.lineWidth = 1;
+    const step = 48;
+    for (let x = step; x < W; x += step) {
+      b.beginPath(); b.moveTo(x, 0); b.lineTo(x, H); b.stroke();
     }
-    return arr;
+    for (let y = step; y < H; y += step) {
+      b.beginPath(); b.moveTo(0, y); b.lineTo(W, y); b.stroke();
+    }
+
+    // soft center glow + vignette
+    let g = b.createRadialGradient(W * 0.5, H * 0.42, 0, W * 0.5, H * 0.42, Math.max(W, H) * 0.7);
+    g.addColorStop(0, "rgba(79, 124, 255, 0.07)");
+    g.addColorStop(0.55, "rgba(79, 124, 255, 0)");
+    b.fillStyle = g;
+    b.fillRect(0, 0, W, H);
+
+    g = b.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.35, W * 0.5, H * 0.5, Math.max(W, H) * 0.75);
+    g.addColorStop(0, "rgba(0, 0, 0, 0)");
+    g.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+    b.fillStyle = g;
+    b.fillRect(0, 0, W, H);
+  }
+
+  // --------------------------------------------------------------- audio ---
+  let audio = null;
+
+  function ensureAudio() {
+    if (!audio) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audio = new Ctx();
+    }
+    if (audio.state === "suspended") audio.resume();
+    return audio;
+  }
+
+  function noiseBuffer(ac, seconds) {
+    const buf = ac.createBuffer(1, Math.max(1, ac.sampleRate * seconds), ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  function playZap(streakLevel) {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const t0 = ac.currentTime;
+    const pitchMul = 1 + Math.min(streakLevel, 12) * 0.07;
+
+    // rising electric zap
+    const osc = ac.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(280 * pitchMul, t0);
+    osc.frequency.exponentialRampToValueAtTime(920 * pitchMul, t0 + 0.09);
+    osc.frequency.exponentialRampToValueAtTime(480 * pitchMul, t0 + 0.28);
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.0001, t0);
+    og.gain.exponentialRampToValueAtTime(0.16, t0 + 0.012);
+    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+    osc.connect(og).connect(ac.destination);
+    osc.start(t0); osc.stop(t0 + 0.32);
+
+    // crackle burst
+    const noise = ac.createBufferSource();
+    noise.buffer = noiseBuffer(ac, 0.25);
+    const bp = ac.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(2400 * pitchMul, t0);
+    bp.Q.value = 1.1;
+    const ng = ac.createGain();
+    ng.gain.setValueAtTime(0.22, t0);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+    noise.connect(bp).connect(ng).connect(ac.destination);
+    noise.start(t0); noise.stop(t0 + 0.25);
+
+    // low thump for punch
+    const sub = ac.createOscillator();
+    sub.type = "sine";
+    sub.frequency.setValueAtTime(110, t0);
+    sub.frequency.exponentialRampToValueAtTime(50, t0 + 0.16);
+    const sg = ac.createGain();
+    sg.gain.setValueAtTime(0.22, t0);
+    sg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+    sub.connect(sg).connect(ac.destination);
+    sub.start(t0); sub.stop(t0 + 0.2);
+  }
+
+  function playFizzle() {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const t0 = ac.currentTime;
+
+    const osc = ac.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(220, t0);
+    osc.frequency.exponentialRampToValueAtTime(58, t0 + 0.38);
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.16, t0);
+    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+    osc.connect(og).connect(ac.destination);
+    osc.start(t0); osc.stop(t0 + 0.42);
+
+    const noise = ac.createBufferSource();
+    noise.buffer = noiseBuffer(ac, 0.35);
+    const lp = ac.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(900, t0);
+    lp.frequency.exponentialRampToValueAtTime(180, t0 + 0.3);
+    const ng = ac.createGain();
+    ng.gain.setValueAtTime(0.14, t0);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+    noise.connect(lp).connect(ng).connect(ac.destination);
+    noise.start(t0); noise.stop(t0 + 0.35);
+  }
+
+  function playSnapTick() {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const t0 = ac.currentTime;
+    const osc = ac.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1400, t0);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.05, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
+    osc.connect(g).connect(ac.destination);
+    osc.start(t0); osc.stop(t0 + 0.06);
+  }
+
+  // ------------------------------------------------------------ particles --
+  function spawnSparks(x, y, opts) {
+    const o = Object.assign({
+      count: 14, speed: 260, spread: Math.PI * 2, angle: 0,
+      color: C.cyanBright, gravity: 420, size: 2.4, life: 0.55
+    }, opts || {});
+    for (let i = 0; i < o.count; i++) {
+      const a = o.angle + (Math.random() - 0.5) * o.spread;
+      const sp = o.speed * rand(0.35, 1.15);
+      particles.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: o.life * rand(0.6, 1.3),
+        maxLife: o.life,
+        size: o.size * rand(0.6, 1.4),
+        color: o.color,
+        gravity: o.gravity
+      });
+    }
+  }
+
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      p.vy += p.gravity * dt;
+      p.vx *= Math.pow(0.06, dt); // drag
+      p.vy *= Math.pow(0.2, dt);
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+    }
+  }
+
+  function drawParticles() {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const p of particles) {
+      const a = clamp(p.life / p.maxLife, 0, 1);
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = p.size;
+      ctx.lineCap = "round";
+      const trail = 0.03;
+      ctx.beginPath();
+      ctx.moveTo(p.x - p.vx * trail, p.y - p.vy * trail);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------- round --
+  function nodeRadius() {
+    return clamp(Math.min(W, H) * 0.055, 26, 52);
+  }
+
+  function newRound() {
+    roundsPlayed += 1;
+    let base;
+    do { base = randInt(1, 9); } while (base === lastBase);
+    lastBase = base;
+    const answer = 10 - base;
+
+    const values = [answer];
+    const pool = [];
+    for (let v = 1; v <= 9; v++) if (v !== answer) pool.push(v);
+    while (values.length < 6 && pool.length) {
+      values.push(pool.splice(randInt(0, pool.length - 1), 1)[0]);
+    }
+
+    baseNode = { value: base, x: 0, y: 0, r: 0, popT: 1, flashT: 0 };
+    nodes = values.map((v, i) => ({
+      value: v,
+      x: 0, y: 0, r: 0,
+      isAnswer: v === answer,
+      popT: -i * 0.06,      // staggered pop-in (negative = delay)
+      flashT: 0,            // white flash on success
+      failT: 0,             // red flash + shake on failure
+      hover: 0              // eased highlight when snapped
+    }));
+    layoutRound();
+
+    snapped = null;
+    lockedNode = null;
+    pulses = [];
+  }
+
+  function layoutRound() {
+    const r = nodeRadius();
+    baseNode.r = r * 1.35;
+    baseNode.x = clamp(W * 0.16, baseNode.r + 12, W);
+    baseNode.y = H * 0.5;
+
+    const minX = W * 0.4, maxX = W - r - 20;
+    const minY = r + 20, maxY = H - r - 20;
+    const minGap = r * 2.6;
+    const placed = [];
+    for (const n of nodes) {
+      n.r = r;
+      let ok = false;
+      for (let attempt = 0; attempt < 200 && !ok; attempt++) {
+        const x = rand(minX, maxX);
+        const y = rand(minY, maxY);
+        ok = dist(x, y, baseNode.x, baseNode.y) > baseNode.r + minGap;
+        for (const q of placed) {
+          if (dist(x, y, q.x, q.y) < minGap) { ok = false; break; }
+        }
+        if (ok) { n.x = x; n.y = y; }
+      }
+      if (!ok) { // fallback: loose grid slot
+        const i = placed.length;
+        n.x = lerp(minX, maxX, ((i % 3) + 0.5) / 3);
+        n.y = lerp(minY, maxY, (Math.floor(i / 3) + 0.5) / 2);
+      }
+      placed.push(n);
+    }
+  }
+
+  // ---------------------------------------------------------------- input --
+  function toLocal(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  canvas.addEventListener("pointermove", (e) => {
+    const p = toLocal(e);
+    pointer.x = p.x;
+    pointer.y = p.y;
+    pointer.seen = true;
+  });
+
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    const p = toLocal(e);
+    pointer.x = p.x;
+    pointer.y = p.y;
+    pointer.seen = true;
+  });
+
+  canvas.addEventListener("pointerup", () => {
+    if (mode !== "playing") return;
+    if (snapped) { commitConnection(snapped); return; }
+    // touch fallback: a direct tap on a node connects even if the wire
+    // tip hasn't caught up to the finger yet
+    for (const n of nodes) {
+      if (dist(pointer.x, pointer.y, n.x, n.y) <= n.r) {
+        commitConnection(n);
+        return;
+      }
+    }
+  });
+
+  window.addEventListener("resize", resize);
+
+  // ------------------------------------------------------------- gameplay --
+  function commitConnection(node) {
+    lockedNode = node;
+    snapped = null;
+    tip.x = node.x;
+    tip.y = node.y;
+    tip.vx = tip.vy = 0;
+
+    if (node.value + baseNode.value === 10) {
+      mode = "celebrate";
+      modeT = 0;
+      streak += 1;
+      correctCount += 1;
+      score += 10 + Math.min(streak, 10) * 2;
+      if (score > best) {
+        best = score;
+        localStorage.setItem(BEST_KEY, String(best));
+      }
+      node.flashT = 1;
+      baseNode.flashT = 1;
+      pulses = [
+        { t: 0, speed: 2.6 },
+        { t: -0.22, speed: 2.6 },
+        { t: -0.44, speed: 2.6 }
+      ];
+      shake = 9 + Math.min(streak, 8);
+      playZap(streak);
+      spawnSparks(baseNode.x, baseNode.y, { count: 16, color: C.cyanBright });
+      spawnSparks(node.x, node.y, { count: 22, color: C.white, speed: 320 });
+    } else {
+      mode = "fail";
+      modeT = 0;
+      streak = 0;
+      node.failT = 1;
+      shake = 4;
+      playFizzle();
+      spawnSparks(node.x, node.y, { count: 8, color: C.redDim, speed: 130, life: 0.4 });
+    }
+    updateHud();
   }
 
   function updateHud() {
-    scoreEl.textContent = `Score: ${score}`;
-    streakEl.textContent = `Streak: ${streak}`;
-    levelEl.textContent = `Level: ${difficulty}`;
-  }
-
-  function choiceCount() {
-    return difficulty >= 4 ? 6 : 4;
-  }
-
-  function nextRound() {
-    if (!playing) return;
-    current = randInt(0, 10);
-    const answer = 10 - current;
-    const options = new Set([answer]);
-    const spread = Math.min(5, 2 + Math.floor(difficulty / 2));
-    while (options.size < choiceCount()) {
-      const n = randInt(Math.max(0, answer - spread), Math.min(10, answer + spread));
-      if (n !== answer || options.size === 0) options.add(n);
-      if (options.size < choiceCount()) options.add(randInt(0, 10));
-    }
-    const list = shuffle([...options]);
-    promptEl.textContent = current;
-    choicesEl.innerHTML = "";
-    list.forEach((n) => {
-      const btn = document.createElement("button");
-      btn.className = "choice-btn";
-      btn.textContent = n;
-      btn.addEventListener("click", () => onPick(n));
-      choicesEl.appendChild(btn);
-    });
-    messageEl.textContent = "";
-    messageEl.className = "message";
-
-    if (difficulty >= 3) {
-      clearTimeout(timerId);
-      timeLeft = Math.max(2.5, 6 - difficulty * 0.4);
-      timerId = setTimeout(() => {
-        if (!playing) return;
-        streak = 0;
-        messageEl.textContent = "Too slow!";
-        messageEl.className = "message bad";
-        updateHud();
-        setTimeout(nextRound, 500);
-      }, timeLeft * 1000);
-    }
-  }
-
-  function onPick(n) {
-    if (!playing) return;
-    clearTimeout(timerId);
-    const answer = 10 - current;
-    if (n === answer) {
-      streak += 1;
-      correctCount += 1;
-      const bonus = Math.min(5, streak);
-      score += 10 + bonus * 2 + difficulty;
-      messageEl.textContent = streak > 2 ? `Nice! Streak ×${streak}` : "Correct!";
-      messageEl.className = "message good";
-      if (correctCount > 0 && correctCount % 5 === 0) {
-        difficulty = Math.min(10, difficulty + 1);
-      }
-    } else {
-      streak = 0;
-      score = Math.max(0, score - 2);
-      messageEl.textContent = `Oops — ${current} + ${answer} = 10`;
-      messageEl.className = "message bad";
-      if (difficulty > 1 && correctCount % 3 === 0) {
-        difficulty = Math.max(1, difficulty - 1);
-      }
-    }
-    updateHud();
-    setTimeout(nextRound, 450);
+    scoreEl.textContent = score;
+    streakEl.textContent = streak;
+    bestEl.textContent = best;
+    streakChip.classList.toggle("hot", streak >= 3);
   }
 
   async function startGame() {
-    await MathArcade.ensurePlayer();
-    const progress = await MathArcade.loadProgress(GAME_ID);
-    difficulty = progress.difficultyLevel || 1;
+    ensureAudio();
     score = 0;
     streak = 0;
     correctCount = 0;
-    playing = true;
+    roundsPlayed = 0;
     overlay.classList.add("hidden");
+    newRound();
+    mode = "playing";
+    modeT = 0;
+    if (!pointer.seen) {
+      pointer.x = W * 0.5;
+      pointer.y = H * 0.5;
+    }
+    tip.x = baseNode.x;
+    tip.y = baseNode.y;
     updateHud();
-    nextRound();
-  }
-
-  async function endRound() {
-    if (!playing) return;
-    playing = false;
-    clearTimeout(timerId);
     try {
-      await MathArcade.submitScore(GAME_ID, score);
-      await MathArcade.saveProgress(GAME_ID, difficulty, { correctCount, lastScore: score });
+      await MathArcade.ensurePlayer();
     } catch (err) {
       console.error(err);
     }
-    overlay.innerHTML = `
-      <h2>Round over!</h2>
-      <p>Score: ${score} · Level reached: ${difficulty}</p>
-      <button class="btn btn-primary" id="again-btn">Play again</button>`;
+  }
+
+  async function endGame() {
+    if (mode === "idle" || mode === "over") return;
+    mode = "over";
+    overlayTitle.textContent = "Circuit closed!";
+    overlayText.textContent = streak >= 5
+      ? "You were on fire. The grid thanks you."
+      : "Every connection makes you faster. Plug back in?";
+    overlayStats.hidden = false;
+    overlayStats.textContent = `Score ${score} · Best ${best} · ${correctCount} circuits completed`;
+    startBtn.textContent = "Play again";
     overlay.classList.remove("hidden");
-    document.getElementById("again-btn").addEventListener("click", startGame);
+    try {
+      await MathArcade.submitScore(GAME_ID, score);
+      await MathArcade.saveProgress(GAME_ID, 1, { correctCount, lastScore: score, bestScore: best });
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   startBtn.addEventListener("click", startGame);
-  endBtn.addEventListener("click", endRound);
+  endBtn.addEventListener("click", endGame);
+
+  // -------------------------------------------------------------- wire -----
+  function wireAnchor() {
+    // Anchor on the rim of the base node, pointing toward the tip.
+    const a = Math.atan2(tip.y - baseNode.y, tip.x - baseNode.x);
+    return {
+      x: baseNode.x + Math.cos(a) * baseNode.r * 0.92,
+      y: baseNode.y + Math.sin(a) * baseNode.r * 0.92
+    };
+  }
+
+  function wirePointAt(p0, cp, p2, t) {
+    const u = 1 - t;
+    return {
+      x: u * u * p0.x + 2 * u * t * cp.x + t * t * p2.x,
+      y: u * u * p0.y + 2 * u * t * cp.y + t * t * p2.y
+    };
+  }
+
+  function updateWire(dt) {
+    let tx = pointer.x, ty = pointer.y;
+
+    if (mode === "celebrate" && lockedNode) {
+      tx = lockedNode.x; ty = lockedNode.y;
+    } else if (mode === "fail" && lockedNode) {
+      if (modeT < 0.22) {
+        tx = lockedNode.x; ty = lockedNode.y;
+      } else if (lockedNode) {
+        // recoil kick away from the wrong node, once
+        const a = Math.atan2(pointer.y - lockedNode.y, pointer.x - lockedNode.x);
+        tip.vx += Math.cos(a) * 900;
+        tip.vy += Math.sin(a) * 900 - 250;
+        lockedNode = null;
+      }
+    } else if (mode === "playing") {
+      // magnetic attraction
+      let nearest = null, nd = Infinity;
+      for (const n of nodes) {
+        const d = dist(tip.x, tip.y, n.x, n.y);
+        if (d < nd) { nd = d; nearest = n; }
+      }
+      const snapRange = nearest ? nearest.r + 42 : 0;
+      const newSnap = nearest && nd < snapRange ? nearest : null;
+      if (newSnap && newSnap !== snapped) playSnapTick();
+      snapped = newSnap;
+      if (snapped) {
+        const pull = 1 - clamp(nd / snapRange, 0, 1); // 0..1, stronger when close
+        tx = lerp(pointer.x, snapped.x, 0.45 + pull * 0.5);
+        ty = lerp(pointer.y, snapped.y, 0.45 + pull * 0.5);
+      }
+    }
+
+    // critically-damped-ish spring toward target
+    const stiff = 180, damp = 16;
+    tip.vx += (tx - tip.x) * stiff * dt;
+    tip.vy += (ty - tip.y) * stiff * dt;
+    tip.vx *= Math.exp(-damp * dt);
+    tip.vy *= Math.exp(-damp * dt);
+    tip.x += tip.vx * dt;
+    tip.y += tip.vy * dt;
+
+    // cable sag springs toward a fraction of the span
+    const anchor = wireAnchor();
+    const span = dist(anchor.x, anchor.y, tip.x, tip.y);
+    const speed = Math.hypot(tip.vx, tip.vy);
+    const restSag = clamp(span * 0.22, 12, 130) * clamp(1 - speed / 2200, 0.25, 1);
+    sagV += (restSag - sag) * 90 * dt;
+    sagV *= Math.exp(-10 * dt);
+    sag += sagV * dt;
+  }
+
+  function drawWire() {
+    const anchor = wireAnchor();
+    const p2 = { x: tip.x, y: tip.y };
+    const cp = {
+      x: (anchor.x + p2.x) / 2 - tip.vx * 0.02,
+      y: (anchor.y + p2.y) / 2 + sag
+    };
+
+    const connected = mode === "celebrate";
+    const failing = mode === "fail" && modeT < 0.22;
+
+    // sample curve with a subtle electric jitter
+    const SEG = 26;
+    const pts = [];
+    for (let i = 0; i <= SEG; i++) {
+      const t = i / SEG;
+      const p = wirePointAt(anchor, cp, p2, t);
+      if (i > 0 && i < SEG) {
+        const amp = connected ? 2.6 : 1.4;
+        p.x += (Math.random() - 0.5) * amp;
+        p.y += (Math.random() - 0.5) * amp;
+      }
+      pts.push(p);
+    }
+
+    const strokePath = () => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    };
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const glowColor = failing ? C.red : C.cyan;
+    const coreColor = failing ? "#ffd7db" : C.cyanBright;
+
+    // outer glow
+    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = failing ? "rgba(255, 77, 94, 0.22)" : "rgba(34, 211, 238, 0.22)";
+    ctx.lineWidth = 10;
+    strokePath();
+
+    // cable body
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = failing ? "rgba(255, 77, 94, 0.75)" : "rgba(79, 124, 255, 0.8)";
+    ctx.lineWidth = 4.5;
+    strokePath();
+
+    // hot core
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = coreColor;
+    ctx.lineWidth = 1.8;
+    strokePath();
+
+    // idle energy pulse drifting along the cable
+    if (mode === "playing" || mode === "idle") {
+      const t = (time * 0.45) % 1;
+      const p = wirePointAt(anchor, cp, p2, t);
+      ctx.fillStyle = C.white;
+      ctx.shadowColor = C.cyan;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // success: bright current races base -> node
+    for (const pl of pulses) {
+      if (pl.t < 0 || pl.t > 1) continue;
+      ctx.shadowColor = C.white;
+      ctx.shadowBlur = 16;
+      ctx.strokeStyle = "rgba(240, 250, 255, 0.95)";
+      ctx.lineWidth = 3.4;
+      ctx.beginPath();
+      const tail = Math.max(0, pl.t - 0.1);
+      const steps = 8;
+      for (let i = 0; i <= steps; i++) {
+        const t = lerp(tail, pl.t, i / steps);
+        const p = wirePointAt(anchor, cp, p2, t);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+      const head = wirePointAt(anchor, cp, p2, pl.t);
+      ctx.fillStyle = C.white;
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // free-end plug (only when not locked into a node)
+    if (mode === "playing" || mode === "idle" || (mode === "fail" && !failing)) {
+      const flicker = 0.75 + Math.random() * 0.25;
+      ctx.shadowColor = C.cyan;
+      ctx.shadowBlur = 16 * flicker;
+      ctx.fillStyle = C.white;
+      ctx.beginPath();
+      ctx.arc(tip.x, tip.y, snapped ? 6.5 : 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(34, 211, 238, 0.35)";
+      ctx.beginPath();
+      ctx.arc(tip.x, tip.y, (snapped ? 13 : 10) * flicker, 0, Math.PI * 2);
+      ctx.fill();
+      // occasional stray spark at the live tip
+      if (Math.random() < 0.12) {
+        spawnSparks(tip.x, tip.y, { count: 1, speed: 90, life: 0.25, size: 1.6, gravity: 200 });
+      }
+    }
+
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------- nodes ----
+  function drawNode(n, isBase) {
+    const popScale = n.popT >= 1 ? 1 : elasticOut(clamp(n.popT / 0.6, 0, 1));
+    if (popScale <= 0.01) return;
+
+    let scale = popScale;
+    let ox = 0;
+
+    if (n.flashT > 0) {
+      // punchy elastic pop on success
+      scale *= 1 + 0.35 * elasticOut(1 - n.flashT) * n.flashT * 2.2;
+    }
+    if (n.failT > 0) {
+      ox = Math.sin(n.failT * 40) * 6 * n.failT; // decaying shake
+    }
+    if (!isBase && n.hover > 0) {
+      scale *= 1 + 0.1 * n.hover;
+    }
+
+    const x = n.x + ox, y = n.y, r = n.r * scale;
+
+    ctx.save();
+
+    const failGlow = n.failT > 0;
+    const ringColor = isBase ? C.cyan : failGlow ? C.red : C.blue;
+    const glowStrength = isBase ? 24 : failGlow ? 22 : 10 + (n.hover || 0) * 16;
+
+    // fill
+    const g = ctx.createRadialGradient(x, y - r * 0.3, r * 0.1, x, y, r);
+    if (isBase) {
+      g.addColorStop(0, "rgba(34, 211, 238, 0.32)");
+      g.addColorStop(1, "rgba(12, 34, 56, 0.95)");
+    } else if (failGlow) {
+      g.addColorStop(0, `rgba(255, 77, 94, ${0.3 * n.failT})`);
+      g.addColorStop(1, "rgba(20, 14, 24, 0.95)");
+    } else {
+      g.addColorStop(0, `rgba(79, 124, 255, ${0.12 + (n.hover || 0) * 0.2})`);
+      g.addColorStop(1, "rgba(10, 16, 32, 0.95)");
+    }
+    ctx.fillStyle = g;
+    ctx.shadowColor = ringColor;
+    ctx.shadowBlur = glowStrength;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ring
+    ctx.shadowBlur = glowStrength * 0.8;
+    ctx.lineWidth = isBase ? 3.5 : 2.5;
+    ctx.strokeStyle = failGlow
+      ? `rgba(255, 77, 94, ${0.5 + 0.5 * n.failT})`
+      : isBase
+        ? C.cyan
+        : `rgba(120, 160, 255, ${0.55 + (n.hover || 0) * 0.45})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // number
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = failGlow ? "#ffccd1" : isBase ? C.white : "#c9dcff";
+    ctx.font = `700 ${Math.round(r * 1.05)}px Fredoka, Nunito, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(n.value), x, y + r * 0.05);
+
+    // white flash overlay on success
+    if (n.flashT > 0.4) {
+      ctx.globalAlpha = (n.flashT - 0.4) / 0.6;
+      ctx.fillStyle = C.white;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------- loop ---
+  function update(dt) {
+    time += dt;
+    modeT += dt;
+
+    // idle attract mode: wire lazily wanders behind the overlay
+    if (mode === "idle" || mode === "over") {
+      pointer.x = W * 0.6 + Math.sin(time * 0.6) * W * 0.18;
+      pointer.y = H * 0.5 + Math.sin(time * 0.9 + 1.7) * H * 0.24;
+    }
+
+    if (baseNode) {
+      baseNode.popT = Math.min(baseNode.popT + dt, 1);
+      baseNode.flashT = Math.max(baseNode.flashT - dt * 2.2, 0);
+      for (const n of nodes) {
+        n.popT = Math.min(n.popT + dt * 1.6, 1);
+        n.flashT = Math.max(n.flashT - dt * 2.2, 0);
+        n.failT = Math.max(n.failT - dt * 2.4, 0);
+        const wantHover = snapped === n ? 1 : 0;
+        n.hover = lerp(n.hover, wantHover, 1 - Math.exp(-12 * dt));
+      }
+      updateWire(dt);
+    }
+
+    // success pulses race along the wire, shedding sparks
+    if (pulses.length) {
+      const anchor = wireAnchor();
+      const cp = { x: (anchor.x + tip.x) / 2, y: (anchor.y + tip.y) / 2 + sag };
+      for (const pl of pulses) {
+        const prev = pl.t;
+        pl.t += pl.speed * dt;
+        if (prev < 1 && pl.t >= 0 && pl.t <= 1 && Math.random() < 0.6) {
+          const p = wirePointAt(anchor, cp, { x: tip.x, y: tip.y }, clamp(pl.t, 0, 1));
+          spawnSparks(p.x, p.y, { count: 2, speed: 120, life: 0.3, size: 1.6 });
+        }
+      }
+      pulses = pulses.filter((pl) => pl.t <= 1.25);
+    }
+
+    if (mode === "celebrate" && modeT >= 0.95) {
+      newRound();
+      mode = "playing";
+      modeT = 0;
+    }
+    if (mode === "fail" && modeT >= 0.6) {
+      mode = "playing";
+      modeT = 0;
+      lockedNode = null;
+    }
+
+    shake = Math.max(shake - dt * 34, 0);
+    updateParticles(dt);
+  }
+
+  function draw() {
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    if (shake > 0.2) {
+      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    }
+
+    if (bgCanvas) ctx.drawImage(bgCanvas, 0, 0, W, H);
+
+    if (baseNode) {
+      // hint label above the base
+      ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
+      ctx.font = "700 15px Nunito, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${baseNode.value} + ? = 10`, baseNode.x, baseNode.y - baseNode.r - 26);
+
+      drawWire();
+      drawNode(baseNode, true);
+      for (const n of nodes) drawNode(n, false);
+    }
+
+    drawParticles();
+    ctx.restore();
+  }
+
+  function frame(now) {
+    const dt = Math.min((now - lastFrame) / 1000, 0.05);
+    lastFrame = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------------------------------------------------------------- boot ---
+  resize();
+  bestEl.textContent = best;
+  // idle attract scene behind the start overlay
+  newRound();
+  pointer.x = W * 0.62;
+  pointer.y = H * 0.45;
+  tip.x = baseNode.x;
+  tip.y = baseNode.y;
+  requestAnimationFrame(frame);
 })();

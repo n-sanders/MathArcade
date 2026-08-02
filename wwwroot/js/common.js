@@ -8,8 +8,8 @@
       id: "make10",
       title: "Make 10",
       path: "/games/make10.html",
-      blurb: "Find the number that adds up to 10. Build speed and streaks!",
-      howTo: "A number appears on screen. Tap the partner that makes 10. Wrong answers break your streak."
+      blurb: "Drag a live electric wire to the number that completes 10!",
+      howTo: "A glowing wire is anchored to the base number. Guide its free end to the number that adds with the base to make 10, then click or release to connect. Correct circuits spark and boost your streak; wrong ones fizzle."
     },
     {
       id: "maze",

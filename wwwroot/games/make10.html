@@ -2,37 +2,224 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Make 10 · MathArcade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/games.css" />
+  <style>
+    :root {
+      --m10-bg: #070b14;
+      --m10-cyan: #22d3ee;
+      --m10-blue: #4f7cff;
+      --m10-purple: #a855f7;
+      --m10-text: #dbeafe;
+      --m10-dim: #64748b;
+      --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+      --font-body: "Nunito", system-ui, sans-serif;
+    }
+
+    * , *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--m10-bg);
+      color: var(--m10-text);
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .m10-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: rgba(7, 11, 20, 0.9);
+      border-bottom: 1px solid rgba(34, 211, 238, 0.15);
+      z-index: 10;
+    }
+
+    .m10-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.9rem;
+      min-width: 0;
+    }
+
+    .back-link {
+      color: var(--m10-dim);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover { color: var(--m10-cyan); }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 3vw, 1.5rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: linear-gradient(90deg, var(--m10-cyan), var(--m10-blue), var(--m10-purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      white-space: nowrap;
+    }
+
+    .hud {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
+    }
+
+    .hud-chip {
+      background: rgba(34, 211, 238, 0.07);
+      border: 1px solid rgba(34, 211, 238, 0.22);
+      border-radius: 999px;
+      padding: 0.35rem 0.8rem;
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: var(--m10-text);
+      white-space: nowrap;
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    .hud-chip .val { color: var(--m10-cyan); }
+
+    .hud-chip.hot {
+      border-color: rgba(34, 211, 238, 0.7);
+      box-shadow: 0 0 12px rgba(34, 211, 238, 0.35), inset 0 0 8px rgba(34, 211, 238, 0.12);
+    }
+
+    .m10-stage {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    #game-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      text-align: center;
+      padding: 1.5rem;
+      background: radial-gradient(circle at 50% 40%, rgba(79, 124, 255, 0.12), transparent 60%), rgba(7, 11, 20, 0.82);
+      backdrop-filter: blur(3px);
+      z-index: 5;
+    }
+
+    .overlay.hidden { display: none; }
+
+    .overlay h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 7vw, 3rem);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: #f0faff;
+      text-shadow: 0 0 18px rgba(34, 211, 238, 0.7), 0 0 48px rgba(79, 124, 255, 0.4);
+    }
+
+    .overlay p {
+      margin: 0;
+      max-width: 34ch;
+      font-size: 1.05rem;
+      color: #94a3b8;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .overlay .stat-line {
+      color: var(--m10-cyan);
+      font-weight: 800;
+      font-size: 1.15rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.8rem 2.2rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      color: #06121a;
+      background: linear-gradient(135deg, var(--m10-cyan), var(--m10-blue));
+      box-shadow: 0 0 18px rgba(34, 211, 238, 0.45), 0 4px 14px rgba(0, 0, 0, 0.5);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 0 28px rgba(34, 211, 238, 0.65), 0 6px 18px rgba(0, 0, 0, 0.5);
+    }
+
+    .btn:active { transform: translateY(0) scale(0.98); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--m10-dim);
+      border: 1px solid rgba(100, 116, 139, 0.4);
+      box-shadow: none;
+      font-size: 0.9rem;
+      padding: 0.45rem 1.1rem;
+    }
+
+    .btn-ghost:hover {
+      color: var(--m10-text);
+      border-color: rgba(34, 211, 238, 0.5);
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
+    }
+  </style>
 </head>
-<body class="game-page">
-  <div class="game-shell">
-    <div class="game-top">
+<body>
+  <div class="m10-topbar">
+    <div class="m10-left">
       <a class="back-link" href="/">← Arcade</a>
-      <h1 class="game-title">Make 10</h1>
-      <div class="hud">
-        <div class="hud-chip" id="score">Score: 0</div>
-        <div class="hud-chip" id="streak">Streak: 0</div>
-        <div class="hud-chip" id="level">Level: 1</div>
-      </div>
+      <h1 class="game-title">MAKE 10</h1>
     </div>
-    <div class="game-stage" id="stage">
-      <div class="overlay" id="overlay">
-        <h2>Make 10</h2>
-        <p>Find the number that adds with the big number to make 10. Build a streak for bonus points!</p>
-        <button class="btn btn-primary" id="start-btn">Start</button>
-      </div>
-      <p class="prompt-label">What adds with this to make 10?</p>
-      <div class="prompt-number" id="prompt">?</div>
-      <div class="choice-grid" id="choices"></div>
-      <p class="message" id="message"></p>
+    <div class="hud">
+      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip" id="streak-chip">Streak <span class="val" id="streak">0</span></div>
+      <div class="hud-chip">Best <span class="val" id="best">0</span></div>
+      <button class="btn btn-ghost" id="end-btn">End</button>
     </div>
-    <div class="game-actions">
-      <button class="btn btn-secondary" id="end-btn">End round</button>
+  </div>
+  <div class="m10-stage" id="stage">
+    <canvas id="game-canvas"></canvas>
+    <div class="overlay" id="overlay">
+      <h2>MAKE 10</h2>
+      <p>A live wire hums on the left. Guide its free end to the number that adds with the base to make <strong>10</strong>, and complete the circuit.</p>
+      <p id="overlay-stats" class="stat-line" hidden></p>
+      <button class="btn" id="start-btn">Power up</button>
     </div>
   </div>
   <script src="/js/common.js"></script>
