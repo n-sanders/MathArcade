@@ -20,10 +20,10 @@
     },
     {
       id: "skipcounting",
-      title: "Skip Counting Race",
+      title: "Lava Leap",
       path: "/games/skipcounting.html",
-      blurb: "Jump ahead on the count sequence before the lava catches you!",
-      howTo: "Tap the next skip-count number to leap upward. Miss and the lava rises faster."
+      blurb: "Skip-count platform to platform and outrun the rising lava!",
+      howTo: "Pick a number 2–10, then tap the platform showing the next skip-count number to leap there. Each number has its own rank (C→S) that speeds up the lava. Reach ×12 to escape!"
     },
     {
       id: "primesearch",

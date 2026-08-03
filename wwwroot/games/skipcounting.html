@@ -2,90 +2,983 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Skip Counting Race · MathArcade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Lava Leap · MathArcade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/games.css" />
   <style>
-    .race-wrap {
-      position: relative;
-      height: 420px;
-      border-radius: 16px;
-      overflow: hidden;
-      background: linear-gradient(#7ec8e3 0%, #b8e0d2 55%, #6b8f71 55%, #4f734f 100%);
+    :root {
+      --sc-bg: #140806;
+      --sc-magma: #ff4d1a;
+      --sc-ember: #ff8a1a;
+      --sc-glow: #ffd166;
+      --sc-text: #fff3e8;
+      --sc-dim: #c49a82;
+      --sc-safe: #5eead4;
+      --sc-danger: #ff3b3b;
+      --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+      --font-body: "Nunito", system-ui, sans-serif;
     }
-    #race-canvas {
-      display: block;
-      width: 100%;
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
       height: 100%;
+      overflow: hidden;
     }
-    .race-ui {
+
+    body {
+      font-family: var(--font-body);
+      background: var(--sc-bg);
+      color: var(--sc-text);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    /* ======================================================= full stage */
+    #stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% -10%, rgba(255, 77, 26, 0.20), transparent 55%),
+        linear-gradient(180deg, #331410 0%, #1d0b08 45%, #0e0504 100%);
+    }
+
+    #stage.shake { animation: scShake 0.4s ease; }
+    #stage.shake-big { animation: scShakeBig 0.7s ease; }
+
+    @keyframes scShake {
+      12% { transform: translate(-6px, 3px); }
+      28% { transform: translate(5px, -4px); }
+      44% { transform: translate(-4px, -2px); }
+      60% { transform: translate(4px, 3px); }
+      76% { transform: translate(-2px, 1px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @keyframes scShakeBig {
+      8%  { transform: translate(-12px, 7px) rotate(-0.5deg); }
+      22% { transform: translate(11px, -9px) rotate(0.4deg); }
+      38% { transform: translate(-9px, -6px); }
+      54% { transform: translate(8px, 7px); }
+      70% { transform: translate(-5px, 3px); }
+      86% { transform: translate(3px, -2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* Danger vignette that breathes when lava is close */
+    #vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 24;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      box-shadow: inset 0 0 120px 30px rgba(255, 40, 20, 0.55);
+    }
+
+    #vignette.on { opacity: 1; animation: vignettePulse 0.9s ease-in-out infinite; }
+
+    @keyframes vignettePulse {
+      50% { box-shadow: inset 0 0 160px 55px rgba(255, 40, 20, 0.7); }
+    }
+
+    /* ---------------------------------------------------- parallax bg */
+    .bg-layer {
       position: absolute;
       left: 0;
       right: 0;
       bottom: 0;
-      padding: 0.75rem;
-      background: linear-gradient(transparent, rgba(11, 61, 74, 0.75));
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+      top: 0;
+      pointer-events: none;
+      background-repeat: repeat-x;
+      background-position: bottom;
+      will-change: background-position;
+    }
+
+    #bg-far {
+      z-index: 1;
+      opacity: 0.5;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='none'%3E%3Cpath d='M0 400 L90 210 L150 260 L260 120 L330 230 L420 90 L500 240 L580 160 L680 280 L800 180 L800 400 Z' fill='%23361511'/%3E%3Cpath d='M400 110 L420 90 L440 112 Z' fill='%23ff5a20' opacity='0.7'/%3E%3C/svg%3E");
+      background-size: 100% 46%;
+    }
+
+    #bg-mid {
       z-index: 2;
+      opacity: 0.75;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cpath d='M0 300 L60 190 L140 240 L230 110 L310 220 L400 150 L470 230 L560 100 L640 210 L720 170 L800 250 L800 300 Z' fill='%23241009'/%3E%3Cpath d='M225 118 L230 110 L237 120 Z' fill='%23ffb347' opacity='0.8'/%3E%3C/svg%3E");
+      background-size: 90% 38%;
     }
-    .next-prompt {
-      color: white;
+
+    /* ------------------------------------------------------ atmosphere */
+    #embers {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .ember {
+      position: absolute;
+      bottom: -8px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--sc-glow);
+      box-shadow: 0 0 8px var(--sc-ember);
+      opacity: 0.7;
+      animation: emberRise linear infinite;
+    }
+
+    @keyframes emberRise {
+      0%   { transform: translateY(0) scale(1); opacity: 0; }
+      15%  { opacity: 0.85; }
+      100% { transform: translateY(-110vh) scale(0.3); opacity: 0; }
+    }
+
+    /* ------------------------------------------------------- the world */
+    #world {
+      position: absolute;
+      inset: 0;
+      will-change: transform;
+      z-index: 5;
+    }
+
+    /* Platforms — chunky rock slabs the student taps */
+    .platform {
+      position: absolute;
+      height: 58px;
+      border-radius: 14px;
+      border: 3px solid #6b3d24;
+      background:
+        radial-gradient(ellipse at 30% 0%, rgba(255, 170, 90, 0.18), transparent 60%),
+        linear-gradient(180deg, #5c351f 0%, #40230f 55%, #26120a 100%);
+      box-shadow:
+        0 7px 0 #170a06,
+        0 12px 24px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 6;
+      pointer-events: none;
+      transition: filter 0.25s ease, opacity 0.4s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .platform::before {
+      content: "";
+      position: absolute;
+      inset: 3px 10% auto;
+      height: 5px;
+      border-radius: 5px;
+      background: linear-gradient(90deg, transparent, rgba(255, 200, 120, 0.3), transparent);
+    }
+
+    .platform .num {
       font-family: var(--font-display);
-      font-size: 1.15rem;
-      text-align: center;
-      margin: 0;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+      font-weight: 700;
+      font-size: clamp(1.35rem, 4.5vmin, 2.1rem);
+      color: var(--sc-glow);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 18px rgba(255, 150, 40, 0.4);
+      pointer-events: none;
+      transition: color 0.2s ease, opacity 0.3s ease, transform 0.3s ease;
     }
-    .pad-row {
+
+    /* dormant rows ahead — dark, numbers hidden */
+    .platform.dormant { filter: brightness(0.5) saturate(0.6); }
+    .platform.dormant .num { opacity: 0.18; transform: scale(0.8); }
+
+    /* the row the student must answer — glowing, clickable */
+    .platform.armed {
+      pointer-events: auto;
+      cursor: pointer;
+      border-color: var(--sc-glow);
+      animation: armedPulse 1.2s ease-in-out infinite;
+    }
+
+    .platform.armed .num {
+      color: #ffffff;
+      animation: numReveal 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .platform.armed:hover {
+      filter: brightness(1.25);
+      transform: translateY(-4px);
+    }
+
+    .platform.armed:active { transform: translateY(2px); }
+
+    @keyframes armedPulse {
+      0%, 100% { box-shadow: 0 7px 0 #170a06, 0 0 18px rgba(255, 209, 102, 0.35); }
+      50%      { box-shadow: 0 7px 0 #170a06, 0 0 36px rgba(255, 209, 102, 0.75); }
+    }
+
+    @keyframes numReveal {
+      0%   { transform: scale(0.3) rotate(-12deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    /* platform you're standing on */
+    .platform.current {
+      border-color: var(--sc-safe);
+      box-shadow: 0 7px 0 #170a06, 0 0 26px rgba(94, 234, 212, 0.45);
+    }
+
+    .platform.current .num { color: var(--sc-safe); }
+
+    .platform.passed { opacity: 0.45; filter: brightness(0.6) saturate(0.5); }
+
+    .platform.landed { animation: platLand 0.45s ease; }
+
+    @keyframes platLand {
+      0%   { transform: scaleX(1) translateY(0); }
+      35%  { transform: scaleX(1.08) translateY(5px); }
+      100% { transform: scaleX(1) translateY(0); }
+    }
+
+    /* wrong answer — the slab cracks and falls into the lava */
+    .platform.crumble {
+      pointer-events: none;
+      animation: crumbleFall 0.9s cubic-bezier(0.5, 0, 0.9, 0.4) forwards;
+    }
+
+    .platform.crumble .num { color: var(--sc-danger); }
+
+    @keyframes crumbleFall {
+      0%   { transform: translateY(0) rotate(0); opacity: 1; }
+      18%  { transform: translateY(6px) rotate(-3deg); }
+      100% { transform: translateY(70vh) rotate(14deg); opacity: 0; }
+    }
+
+    .platform.start-pad { border-color: #8a5230; }
+    .platform.start-pad .num {
+      font-size: 1rem;
+      letter-spacing: 0.2em;
+      color: var(--sc-dim);
+    }
+
+    /* --------------------------------------------------------- player */
+    #player {
+      position: absolute;
+      width: 64px;
+      height: 72px;
+      margin-left: -32px;
+      z-index: 12;
+      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
+      pointer-events: none;
+    }
+
+    #player svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    #player.pose-jump { animation: jumpSquash 0.55s ease; }
+    #player.pose-land { animation: landBounce 0.35s ease; }
+
+    @keyframes jumpSquash {
+      0%   { transform: scale(1.15, 0.75); }
+      25%  { transform: scale(0.85, 1.2); }
+      100% { transform: scale(1, 1); }
+    }
+
+    @keyframes landBounce {
+      0%   { transform: scale(0.9, 1.15); }
+      40%  { transform: scale(1.12, 0.82); }
+      100% { transform: scale(1, 1); }
+    }
+
+    /* glowing trail bits left behind mid-jump */
+    .trail-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      margin: -5px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffe08a, #ff8a1a 70%);
+      box-shadow: 0 0 12px rgba(255, 160, 40, 0.9);
+      pointer-events: none;
+      z-index: 11;
+      animation: trailFade 0.5s ease-out forwards;
+    }
+
+    @keyframes trailFade {
+      to { transform: scale(0.1); opacity: 0; }
+    }
+
+    /* ------------------------------------------- fail line + lava */
+    #danger-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 0;
+      z-index: 14;
+      pointer-events: none;
+    }
+
+    #danger-line .line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 3px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--sc-danger) 0 14px,
+        transparent 14px 22px
+      );
+      box-shadow:
+        0 0 10px rgba(255, 59, 59, 0.9),
+        0 0 24px rgba(255, 80, 40, 0.55);
+      animation: dangerDash 0.6s linear infinite;
+    }
+
+    #danger-line .label {
+      position: absolute;
+      right: 12px;
+      top: -28px;
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--sc-danger);
+      text-shadow: 0 0 10px rgba(255, 40, 20, 0.8);
+      background: rgba(20, 8, 6, 0.65);
+      padding: 0.15rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 59, 59, 0.45);
+    }
+
+    #danger-line.hot .line {
+      height: 5px;
+      box-shadow:
+        0 0 16px rgba(255, 59, 59, 1),
+        0 0 40px rgba(255, 100, 40, 0.8);
+      animation: dangerDash 0.3s linear infinite, dangerFlash 0.5s ease-in-out infinite;
+    }
+
+    @keyframes dangerDash { to { background-position: 22px 0; } }
+    @keyframes dangerFlash { 50% { opacity: 0.6; } }
+
+    #lava {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 120px;
+      z-index: 13;
+      pointer-events: none;
+    }
+
+    #lava .glow {
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      top: -70px;
+      height: 100px;
+      background:
+        radial-gradient(ellipse at 50% 100%, rgba(255, 100, 20, 0.8), transparent 70%),
+        radial-gradient(ellipse at 30% 80%, rgba(255, 200, 60, 0.35), transparent 55%),
+        radial-gradient(ellipse at 70% 80%, rgba(255, 60, 20, 0.4), transparent 55%);
+      filter: blur(9px);
+      animation: lavaGlow 2.2s ease-in-out infinite;
+    }
+
+    @keyframes lavaGlow {
+      0%, 100% { opacity: 0.75; transform: scaleY(1); }
+      50% { opacity: 1; transform: scaleY(1.18); }
+    }
+
+    #lava .body {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg,
+          #ffb347 0%,
+          #ff6b1a 18%,
+          #e6392b 45%,
+          #8b1500 75%,
+          #3a0800 100%);
+    }
+
+    #lava .surface {
+      position: absolute;
+      left: -5%;
+      right: -5%;
+      top: -14px;
+      height: 36px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 36' preserveAspectRatio='none'%3E%3Cpath d='M0 22 Q15 6 30 22 T60 22 T90 22 T120 22 V36 H0Z' fill='%23ffb347'/%3E%3Cpath d='M0 26 Q15 12 30 26 T60 26 T90 26 T120 26 V36 H0Z' fill='%23ff7a1a' opacity='0.85'/%3E%3C/svg%3E")
+        repeat-x;
+      background-size: 120px 36px;
+      animation: lavaWave 1.4s linear infinite;
+      filter: drop-shadow(0 -4px 12px rgba(255, 160, 40, 0.85));
+    }
+
+    @keyframes lavaWave { to { background-position: 120px 0; } }
+
+    .lava-bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffe08a, #ff6b1a 70%);
+      opacity: 0.7;
+      animation: bubblePop linear infinite;
+    }
+
+    @keyframes bubblePop {
+      0%   { transform: translateY(20px) scale(0.4); opacity: 0; }
+      20%  { opacity: 0.8; }
+      80%  { opacity: 0.5; }
+      100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+    }
+
+    /* --------------------------------------------------- heat meter */
+    #heat-meter {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: min(46vh, 340px);
+      border-radius: 999px;
+      border: 2px solid rgba(255, 138, 26, 0.4);
+      background: rgba(20, 8, 6, 0.6);
+      z-index: 30;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    #heat-meter .fill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 0%;
+      background: linear-gradient(180deg, #ff3b3b, #ff8a1a, #ffd166);
+      transition: height 0.25s ease;
+    }
+
+    #heat-meter.hot { animation: meterBlink 0.5s ease-in-out infinite; }
+
+    @keyframes meterBlink {
+      50% { border-color: var(--sc-danger); box-shadow: 0 0 16px rgba(255, 59, 59, 0.8); }
+    }
+
+    #heat-label {
+      position: absolute;
+      left: 6px;
+      top: calc(50% + min(23vh, 170px) + 8px);
+      z-index: 30;
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--sc-dim);
+      pointer-events: none;
+    }
+
+    /* ------------------------------------------------------- HUD */
+    .hud-left {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      z-index: 40;
+      display: flex;
+      align-items: baseline;
+      gap: 0.7rem;
+    }
+
+    .back-link {
+      color: var(--sc-dim);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.88rem;
+      background: rgba(20, 8, 6, 0.7);
+      padding: 0.28rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 138, 26, 0.25);
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover { color: var(--sc-ember); }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.05rem, 2.6vw, 1.4rem);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: linear-gradient(90deg, var(--sc-glow), var(--sc-ember), var(--sc-magma));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: none;
+    }
+
+    .hud-right {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      z-index: 40;
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .hud-chip {
+      background: rgba(20, 8, 6, 0.72);
+      border: 1px solid rgba(255, 138, 26, 0.3);
+      border-radius: 999px;
+      padding: 0.3rem 0.75rem;
+      font-weight: 800;
+      font-size: 0.82rem;
+      white-space: nowrap;
+      backdrop-filter: blur(4px);
+    }
+
+    .hud-chip .val { color: var(--sc-glow); }
+
+    .hud-chip.combo-chip { display: none; border-color: rgba(94, 234, 212, 0.5); }
+    .hud-chip.combo-chip.show { display: block; animation: rankPop 0.3s ease; }
+    .hud-chip.combo-chip .val { color: var(--sc-safe); }
+
+    /* prompt ribbon — the question, floating top-center */
+    #prompt-ribbon {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.45rem 1.1rem;
+      background: rgba(20, 8, 6, 0.78);
+      border: 1px solid rgba(255, 138, 26, 0.4);
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      font-family: var(--font-display);
+      font-size: clamp(0.95rem, 2.6vw, 1.25rem);
+      font-weight: 600;
+      white-space: nowrap;
+      max-width: calc(100vw - 20px);
+    }
+
+    #prompt-ribbon .hl { color: var(--sc-glow); font-weight: 700; }
+    #prompt-ribbon .q { color: var(--sc-safe); font-weight: 700; }
+    #prompt-ribbon .prog {
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--sc-dim);
+    }
+
+    #prompt-ribbon.bump { animation: ribbonBump 0.35s ease; }
+
+    @keyframes ribbonBump {
+      40% { transform: translateX(-50%) scale(1.08); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
+    /* ------------------------------------------------------------- FX */
+    #fx-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      overflow: hidden;
+    }
+
+    .spark {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      margin: -4px;
+      border-radius: 50%;
+      background: var(--sc-glow);
+      box-shadow: 0 0 10px var(--sc-ember);
+      animation: sparkFly 0.7s ease-out forwards;
+    }
+
+    @keyframes sparkFly {
+      0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+
+    .float-text {
+      position: absolute;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--sc-glow);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      animation: floatUp 0.95s ease-out forwards;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .float-text.bad { color: var(--sc-danger); font-size: 1.15rem; }
+    .float-text.big { font-size: 2rem; color: #fff; }
+    .float-text.combo { color: var(--sc-safe); font-size: 1.6rem; }
+
+    @keyframes floatUp {
+      0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+      20%  { transform: translate(-50%, -12px) scale(1.15); opacity: 1; }
+      100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+    }
+
+    .screen-flash {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 200, 100, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 25;
+    }
+
+    .screen-flash.go { animation: flashPop 0.35s ease; }
+    .screen-flash.bad { background: rgba(255, 40, 20, 0.3); }
+    .screen-flash.win { background: rgba(255, 209, 102, 0.45); }
+
+    @keyframes flashPop {
+      0% { opacity: 0.85; }
+      100% { opacity: 0; }
+    }
+
+    /* --------------------------------------------------------- overlay */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background:
+        radial-gradient(ellipse at 50% 30%, rgba(255, 77, 26, 0.28), transparent 55%),
+        rgba(10, 4, 3, 0.88);
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay.hidden { display: none; }
+
+    .overlay-card {
+      width: min(560px, 100%);
+      max-height: min(92vh, 720px);
+      overflow: auto;
+      background: linear-gradient(165deg, rgba(60, 24, 14, 0.96), rgba(28, 10, 8, 0.98));
+      border: 1px solid rgba(255, 138, 26, 0.35);
+      border-radius: 22px;
+      box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.55),
+        0 0 40px rgba(255, 80, 20, 0.18);
+      padding: 1.4rem 1.35rem 1.5rem;
+      text-align: center;
+    }
+
+    .overlay-card h2 {
+      margin: 0 0 0.4rem;
+      font-family: var(--font-display);
+      font-size: clamp(1.55rem, 4vw, 2rem);
+      background: linear-gradient(90deg, var(--sc-glow), var(--sc-ember));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .overlay-card p {
+      margin: 0 0 1rem;
+      color: var(--sc-dim);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.75rem 1.4rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--sc-ember), var(--sc-magma));
+      color: #1a0804;
+      box-shadow: 0 4px 0 #8b2500, 0 0 20px rgba(255, 100, 30, 0.4);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--sc-dim);
+      border: 1px solid rgba(196, 154, 130, 0.35);
+      margin-top: 0.65rem;
+    }
+
+    /* number picker */
+    .pick-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.5rem;
+      gap: 0.55rem;
+      margin: 0.85rem 0 0.5rem;
     }
-    .pad {
-      border: none;
-      border-radius: 14px;
-      padding: 0.85rem;
+
+    .pick-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.85rem 0.4rem 0.7rem;
+      border-radius: 16px;
+      border: 2px solid rgba(255, 138, 26, 0.3);
+      background: linear-gradient(180deg, rgba(70, 30, 18, 0.9), rgba(30, 12, 8, 0.95));
+      color: var(--sc-text);
+      cursor: pointer;
+      font-family: var(--font-display);
+      transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .pick-btn:hover {
+      transform: translateY(-3px);
+      border-color: var(--sc-ember);
+      box-shadow: 0 0 22px rgba(255, 100, 30, 0.35);
+    }
+
+    .pick-btn .n {
+      font-size: 1.65rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .pick-btn .sub {
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--sc-dim);
+      letter-spacing: 0.02em;
+    }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+
+    .rank-C { background: rgba(140, 140, 150, 0.25); color: #c8c8d0; border-color: rgba(180, 180, 190, 0.4); }
+    .rank-B { background: rgba(80, 180, 120, 0.2); color: #7dffa8; border-color: rgba(80, 220, 140, 0.45); }
+    .rank-A { background: rgba(80, 140, 255, 0.22); color: #9ec5ff; border-color: rgba(100, 160, 255, 0.5); }
+    .rank-S {
+      background: linear-gradient(135deg, rgba(255, 200, 60, 0.3), rgba(255, 100, 40, 0.35));
+      color: var(--sc-glow);
+      border-color: rgba(255, 209, 102, 0.65);
+      box-shadow: 0 0 12px rgba(255, 180, 40, 0.35);
+      animation: sGlow 1.8s ease-in-out infinite;
+    }
+
+    @keyframes sGlow {
+      50% { box-shadow: 0 0 20px rgba(255, 180, 40, 0.65); }
+    }
+
+    .rank-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--sc-dim);
+    }
+
+    .rank-legend span { display: inline-flex; align-items: center; gap: 0.25rem; }
+
+    .end-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.85rem 0 1.1rem;
+    }
+
+    .end-stat {
+      background: rgba(255, 77, 26, 0.1);
+      border: 1px solid rgba(255, 138, 26, 0.28);
+      border-radius: 12px;
+      padding: 0.55rem 0.9rem;
+      min-width: 90px;
+    }
+
+    .end-stat .lbl {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--sc-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .end-stat .num {
       font-family: var(--font-display);
       font-size: 1.35rem;
       font-weight: 700;
-      background: var(--foam);
-      color: var(--ink);
-      cursor: pointer;
+      color: var(--sc-glow);
     }
-    .pad:hover { background: var(--sun); }
+
+    .rank-up-banner {
+      margin: 0.5rem 0 0.85rem;
+      padding: 0.55rem 0.85rem;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(255, 209, 102, 0.15), rgba(255, 77, 26, 0.2));
+      border: 1px solid rgba(255, 209, 102, 0.45);
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--sc-glow);
+      animation: rankPop 0.6s ease;
+    }
+
+    @keyframes rankPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 560px) {
+      .game-title { display: none; }
+      #heat-meter { height: 32vh; }
+      #heat-label { top: calc(50% + 16vh + 8px); }
+    }
   </style>
 </head>
-<body class="game-page">
-  <div class="game-shell">
-    <div class="game-top">
-      <a class="back-link" href="/">← Arcade</a>
-      <h1 class="game-title">Skip Counting Race</h1>
-      <div class="hud">
-        <div class="hud-chip" id="score">Score: 0</div>
-        <div class="hud-chip" id="height">Height: 0</div>
-        <div class="hud-chip" id="level">Level: 1</div>
+<body>
+  <div id="stage">
+    <div class="bg-layer" id="bg-far" aria-hidden="true"></div>
+    <div class="bg-layer" id="bg-mid" aria-hidden="true"></div>
+    <div id="embers" aria-hidden="true"></div>
+
+    <div id="world">
+      <div id="platforms"></div>
+      <div id="player" aria-hidden="true">
+        <svg id="player-svg" viewBox="0 0 64 72" xmlns="http://www.w3.org/2000/svg">
+          <g id="pose-idle">
+            <ellipse cx="32" cy="66" rx="14" ry="4" fill="rgba(0,0,0,0.35)" />
+            <rect x="22" y="28" width="20" height="26" rx="8" fill="#ff6b4a" />
+            <circle cx="32" cy="20" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="19" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="19" r="2.2" fill="#2a1210" />
+            <path d="M27 24 Q32 27 37 24" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M18 34 Q14 40 16 48" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 34 Q50 40 48 48" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M26 52 L24 64" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <path d="M38 52 L40 64" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <path d="M20 12 Q32 4 44 12" stroke="#3d2317" stroke-width="4" stroke-linecap="round" fill="none" />
+          </g>
+          <g id="pose-crouch" display="none">
+            <ellipse cx="32" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.35)" />
+            <rect x="20" y="36" width="24" height="20" rx="8" fill="#ff6b4a" />
+            <circle cx="32" cy="28" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="27" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="27" r="2.2" fill="#2a1210" />
+            <path d="M27 32 Q32 34 37 32" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M18 40 Q10 44 12 50" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 40 Q54 44 52 50" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M24 54 L20 64" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <path d="M40 54 L44 64" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <path d="M20 20 Q32 12 44 20" stroke="#3d2317" stroke-width="4" stroke-linecap="round" fill="none" />
+          </g>
+          <g id="pose-jump" display="none">
+            <ellipse cx="32" cy="68" rx="10" ry="3" fill="rgba(0,0,0,0.2)" />
+            <rect x="22" y="24" width="20" height="24" rx="8" fill="#ff6b4a" />
+            <circle cx="32" cy="16" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="15" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="15" r="2.2" fill="#2a1210" />
+            <path d="M27 20 Q32 23 37 20" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M18 30 Q8 22 10 14" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 30 Q56 22 54 14" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M26 46 L20 58" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <path d="M38 46 L48 54" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <path d="M20 8 Q32 0 44 8" stroke="#3d2317" stroke-width="4" stroke-linecap="round" fill="none" />
+            <path d="M28 58 L32 70 L36 58" fill="#ffb347" opacity="0.85" />
+          </g>
+          <g id="pose-celebrate" display="none">
+            <ellipse cx="32" cy="66" rx="14" ry="4" fill="rgba(0,0,0,0.35)" />
+            <rect x="22" y="28" width="20" height="26" rx="8" fill="#ff6b4a" />
+            <circle cx="32" cy="20" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="19" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="19" r="2.2" fill="#2a1210" />
+            <path d="M26 24 Q32 28 38 24" stroke="#2a1210" stroke-width="1.8" fill="none" stroke-linecap="round" />
+            <path d="M18 34 Q12 18 16 10" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 34 Q52 18 48 10" stroke="#ff6b4a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M26 52 L24 64" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <path d="M38 52 L40 64" stroke="#2a1210" stroke-width="5" stroke-linecap="round" />
+            <circle cx="16" cy="8" r="3" fill="#ffd166" />
+            <circle cx="48" cy="8" r="3" fill="#ffd166" />
+            <path d="M20 12 Q32 4 44 12" stroke="#3d2317" stroke-width="4" stroke-linecap="round" fill="none" />
+          </g>
+        </svg>
       </div>
     </div>
-    <div class="game-stage" style="padding: 0.75rem;">
-      <div class="overlay" id="overlay">
-        <h2>Skip Counting Race</h2>
-        <p>Tap the next number in the skip-count sequence to jump. Stay above the rising lava!</p>
-        <button class="btn btn-primary" id="start-btn">Race!</button>
+
+    <div id="danger-line">
+      <div class="line"></div>
+      <div class="label">FAIL LINE</div>
+    </div>
+
+    <div id="lava">
+      <div class="glow"></div>
+      <div class="body">
+        <div class="surface"></div>
+        <div class="bubbles" id="lava-bubbles"></div>
       </div>
-      <div class="race-wrap">
-        <canvas id="race-canvas" width="900" height="420"></canvas>
-        <div class="race-ui">
-          <p class="next-prompt" id="prompt">Counting by 2s — next?</p>
-          <div class="pad-row" id="pads"></div>
-        </div>
+    </div>
+
+    <div id="heat-meter"><div class="fill"></div></div>
+    <div id="heat-label">HEAT</div>
+
+    <div class="hud-left">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">Lava Leap</h1>
+    </div>
+    <div class="hud-right">
+      <div class="hud-chip combo-chip" id="combo-chip">Combo <span class="val" id="combo">0</span></div>
+      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip rank-chip">×<span id="skip-label">—</span> · <span class="val" id="rank-label">C</span></div>
+    </div>
+
+    <div id="prompt-ribbon">
+      <span id="prompt-text">Pick a platform!</span>
+      <span class="prog" id="progress-step">0/12</span>
+    </div>
+
+    <div id="vignette"></div>
+    <div id="fx-layer"></div>
+    <div class="screen-flash" id="flash"></div>
+
+    <div class="overlay" id="overlay">
+      <div class="overlay-card" id="overlay-card">
+        <h2>Lava Leap</h2>
+        <p>The lava is rising! Skip-count your way up — tap the platform with the next number to leap to safety. Stay above the fail line!</p>
+        <button class="btn btn-primary" id="start-btn">Choose your leap</button>
       </div>
     </div>
   </div>
+
   <script src="/js/common.js"></script>
   <script src="/js/skipcounting.js"></script>
 </body>
