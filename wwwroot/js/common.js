@@ -36,8 +36,8 @@
       id: "memorymatch",
       title: "Memory Match Math",
       path: "/games/memorymatch.html",
-      blurb: "Match math problems with their answers in a classic memory game.",
-      howTo: "Flip two cards at a time. Pair each expression with its correct answer. Fewer moves means a higher score."
+      blurb: "Match math problems with their answers as the colorful card board grows.",
+      howTo: "Flip two cards at a time and pair each expression with its answer. Every match earns points and a celebration. Clear each board to grow from 8 to 24 cards; misses simply flip back with no penalty."
     }
   ];
 
