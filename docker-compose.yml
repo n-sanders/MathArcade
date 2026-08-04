@@ -2,13 +2,19 @@ services:
   matharcade:
     build: .
     ports:
-      - "8080:8080"
+      - "5087:8080"
     environment:
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__Default=Data Source=/data/matharcade.db
     volumes:
       - matharcade-data:/data
     restart: unless-stopped
+    networks:
+      - default
+      - web-core_default
 
+networks:
+  web-core_default:
+    external: true
 volumes:
   matharcade-data:
