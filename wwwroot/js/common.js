@@ -84,11 +84,151 @@
     return res.json();
   }
 
+  const PLAYER_MODAL_ID = "matharcade-player-modal";
+  let playerNamePromptPromise = null;
+
+  function injectPlayerNameModal() {
+    if (document.getElementById(PLAYER_MODAL_ID)) return;
+
+    const style = document.createElement("style");
+    style.id = "matharcade-player-modal-styles";
+    style.textContent = `
+      .ma-player-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem;
+        background: rgba(11, 61, 74, 0.88);
+        font-family: "Nunito", system-ui, sans-serif;
+      }
+      .ma-player-modal.hidden { display: none; }
+      .ma-player-modal__card {
+        width: min(22rem, 100%);
+        padding: 1.5rem 1.35rem 1.35rem;
+        border-radius: 18px;
+        background: rgba(232, 247, 244, 0.96);
+        box-shadow: 0 18px 40px rgba(8, 40, 48, 0.28);
+        color: #102a32;
+        text-align: center;
+      }
+      .ma-player-modal__card h2 {
+        margin: 0;
+        font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+        font-size: 1.65rem;
+        line-height: 1.15;
+        color: #0b3d4a;
+      }
+      .ma-player-modal__card p {
+        margin: 0.55rem 0 0;
+        font-size: 0.95rem;
+        line-height: 1.45;
+        color: #4a6b74;
+      }
+      .ma-player-modal__form {
+        margin-top: 1.15rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      .ma-player-modal__form input {
+        width: 100%;
+        border: 2px solid rgba(18, 102, 120, 0.2);
+        border-radius: 12px;
+        padding: 0.65rem 0.85rem;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #102a32;
+        background: #fff;
+        outline: none;
+      }
+      .ma-player-modal__form input:focus {
+        border-color: #ff6b4a;
+      }
+      .ma-player-modal__form button {
+        border: none;
+        border-radius: 999px;
+        background: #ff6b4a;
+        color: #fff;
+        padding: 0.7rem 1rem;
+        font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 6px 0 #e25538;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+      }
+      .ma-player-modal__form button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 7px 0 #e25538;
+      }
+      .ma-player-modal__form button:active {
+        transform: translateY(2px);
+        box-shadow: 0 3px 0 #e25538;
+      }
+    `;
+    document.head.appendChild(style);
+
+    const modal = document.createElement("div");
+    modal.id = PLAYER_MODAL_ID;
+    modal.className = "ma-player-modal hidden";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "ma-player-modal-title");
+    modal.innerHTML = `
+      <div class="ma-player-modal__card">
+        <h2 id="ma-player-modal-title">Welcome, explorer!</h2>
+        <p>What should we call you? Your name appears on leaderboards.</p>
+        <form class="ma-player-modal__form" id="ma-player-modal-form">
+          <input id="ma-player-modal-input" name="name" maxlength="64" autocomplete="nickname" placeholder="Your name" />
+          <button type="submit">Let's play</button>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  function askPlayerName() {
+    if (playerNamePromptPromise) return playerNamePromptPromise;
+
+    playerNamePromptPromise = new Promise((resolve) => {
+      injectPlayerNameModal();
+      const modal = document.getElementById(PLAYER_MODAL_ID);
+      const form = document.getElementById("ma-player-modal-form");
+      const input = document.getElementById("ma-player-modal-input");
+
+      input.value = "";
+      modal.classList.remove("hidden");
+      modal.setAttribute("aria-hidden", "false");
+
+      const finish = (name) => {
+        form.removeEventListener("submit", onSubmit);
+        modal.classList.add("hidden");
+        modal.setAttribute("aria-hidden", "true");
+        playerNamePromptPromise = null;
+        resolve(name);
+      };
+
+      const onSubmit = (e) => {
+        e.preventDefault();
+        const name = (input.value.trim() || "Player").slice(0, 64);
+        finish(name);
+      };
+
+      form.addEventListener("submit", onSubmit);
+      queueMicrotask(() => input.focus({ preventScroll: true }));
+    });
+
+    return playerNamePromptPromise;
+  }
+
   async function ensurePlayer(preferredName) {
     const deviceToken = getOrCreateDeviceToken();
     let name = (preferredName || getPlayerName() || "").trim();
     if (!name) {
-      name = (prompt("What should we call you, explorer?", "Player") || "Player").trim() || "Player";
+      name = await askPlayerName();
     }
     if (name.length > 64) name = name.slice(0, 64);
     setPlayerName(name);
