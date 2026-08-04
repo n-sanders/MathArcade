@@ -33,13 +33,73 @@
       font-family: var(--font-body);
       background: var(--sc-bg);
       color: var(--sc-text);
+      display: flex;
+      flex-direction: column;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
     }
 
-    /* ======================================================= full stage */
+    /* ------------------------------------------------------------ topbar */
+    .sc-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.55rem 1rem;
+      background: rgba(20, 8, 6, 0.95);
+      border-bottom: 1px solid rgba(255, 138, 26, 0.22);
+      z-index: 100;
+      position: relative;
+    }
+
+    .sc-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.85rem;
+      min-width: 0;
+    }
+
+    .back-link {
+      color: var(--sc-dim);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover { color: var(--sc-ember); }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.15rem, 3vw, 1.55rem);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: linear-gradient(90deg, var(--sc-glow), var(--sc-ember), var(--sc-magma));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      white-space: nowrap;
+    }
+
+    .hud {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+    }
+
+    .sc-stage-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ======================================================= game stage */
     #stage {
-      position: fixed;
+      position: absolute;
       inset: 0;
       overflow: hidden;
       background:
@@ -481,62 +541,15 @@
       pointer-events: none;
     }
 
-    /* ------------------------------------------------------- HUD */
-    .hud-left {
-      position: absolute;
-      top: 10px;
-      left: 12px;
-      z-index: 40;
-      display: flex;
-      align-items: baseline;
-      gap: 0.7rem;
-    }
-
-    .back-link {
-      color: var(--sc-dim);
-      font-weight: 700;
-      text-decoration: none;
-      font-size: 0.88rem;
-      background: rgba(20, 8, 6, 0.7);
-      padding: 0.28rem 0.7rem;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 138, 26, 0.25);
-      transition: color 0.15s ease;
-    }
-
-    .back-link:hover { color: var(--sc-ember); }
-
-    .game-title {
-      margin: 0;
-      font-family: var(--font-display);
-      font-size: clamp(1.05rem, 2.6vw, 1.4rem);
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      background: linear-gradient(90deg, var(--sc-glow), var(--sc-ember), var(--sc-magma));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      text-shadow: none;
-    }
-
-    .hud-right {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      z-index: 40;
-      display: flex;
-      gap: 0.4rem;
-    }
-
     .hud-chip {
-      background: rgba(20, 8, 6, 0.72);
-      border: 1px solid rgba(255, 138, 26, 0.3);
+      background: rgba(255, 77, 26, 0.1);
+      border: 1px solid rgba(255, 138, 26, 0.28);
       border-radius: 999px;
-      padding: 0.3rem 0.75rem;
+      padding: 0.32rem 0.75rem;
       font-weight: 800;
       font-size: 0.82rem;
+      color: var(--sc-text);
       white-space: nowrap;
-      backdrop-filter: blur(4px);
     }
 
     .hud-chip .val { color: var(--sc-glow); }
@@ -548,7 +561,7 @@
     /* prompt ribbon — the question, floating top-center */
     #prompt-ribbon {
       position: absolute;
-      top: 52px;
+      top: 10px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 40;
@@ -860,13 +873,26 @@
     }
 
     @media (max-width: 560px) {
-      .game-title { display: none; }
+      .hud-chip:nth-child(1) { display: none; }
       #heat-meter { height: 32vh; }
       #heat-label { top: calc(50% + 16vh + 8px); }
     }
   </style>
 </head>
 <body>
+  <div class="sc-topbar">
+    <div class="sc-left">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">Lava Leap</h1>
+    </div>
+    <div class="hud">
+      <div class="hud-chip combo-chip" id="combo-chip">Combo <span class="val" id="combo">0</span></div>
+      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip rank-chip">×<span id="skip-label">—</span> · <span class="val" id="rank-label">C</span></div>
+    </div>
+  </div>
+
+  <div class="sc-stage-wrap">
   <div id="stage">
     <div class="bg-layer" id="bg-far" aria-hidden="true"></div>
     <div class="bg-layer" id="bg-mid" aria-hidden="true"></div>
@@ -951,16 +977,6 @@
     <div id="heat-meter"><div class="fill"></div></div>
     <div id="heat-label">HEAT</div>
 
-    <div class="hud-left">
-      <a class="back-link" href="/">← Arcade</a>
-      <h1 class="game-title">Lava Leap</h1>
-    </div>
-    <div class="hud-right">
-      <div class="hud-chip combo-chip" id="combo-chip">Combo <span class="val" id="combo">0</span></div>
-      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
-      <div class="hud-chip rank-chip">×<span id="skip-label">—</span> · <span class="val" id="rank-label">C</span></div>
-    </div>
-
     <div id="prompt-ribbon">
       <span id="prompt-text">Pick a platform!</span>
       <span class="prog" id="progress-step">0/12</span>
@@ -977,6 +993,7 @@
         <button class="btn btn-primary" id="start-btn">Choose your leap</button>
       </div>
     </div>
+  </div>
   </div>
 
   <script src="/js/common.js"></script>
