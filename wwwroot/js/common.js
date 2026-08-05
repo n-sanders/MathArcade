@@ -26,6 +26,13 @@
       howTo: "Pick a number 2–10, then tap the platform showing the next skip-count number to leap there. Each number has its own rank (C→S) that speeds up the lava. Reach ×12 to escape!"
     },
     {
+      id: "avalanche",
+      title: "Avalanche Run",
+      path: "/games/avalanche.html",
+      blurb: "Skip-count down the mountain and outrun the avalanche!",
+      howTo: "Pick a number 2–10, then tap the platform showing the next countdown number to hop down from ×12 all the way to 0. Each number has its own rank (C→S) that speeds up the avalanche. Reach 0 to escape!"
+    },
+    {
       id: "primesearch",
       title: "Prime Search",
       path: "/games/primesearch.html",

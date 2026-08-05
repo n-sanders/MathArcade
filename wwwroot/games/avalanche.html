@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Avalanche Run · MathArcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --sc-bg: #0a1428;
+      --sc-ice: #4a90d9;
+      --sc-frost: #9fd8ff;
+      --sc-glow: #dff1ff;
+      --sc-text: #eef7ff;
+      --sc-dim: #8ca6c4;
+      --sc-safe: #5eead4;
+      --sc-danger: #ff5a8a;
+      --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+      --font-body: "Nunito", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--sc-bg);
+      color: var(--sc-text);
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    /* ------------------------------------------------------------ topbar */
+    .sc-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.55rem 1rem;
+      background: rgba(10, 20, 40, 0.95);
+      border-bottom: 1px solid rgba(159, 216, 255, 0.22);
+      z-index: 100;
+      position: relative;
+    }
+
+    .sc-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.85rem;
+      min-width: 0;
+    }
+
+    .back-link {
+      color: var(--sc-dim);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover { color: var(--sc-frost); }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.15rem, 3vw, 1.55rem);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: linear-gradient(90deg, #ffffff, var(--sc-frost), var(--sc-ice));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      white-space: nowrap;
+    }
+
+    .hud {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+    }
+
+    .sc-stage-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ======================================================= game stage */
+    #stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% -10%, rgba(159, 216, 255, 0.22), transparent 55%),
+        linear-gradient(180deg, #1b3054 0%, #12203c 45%, #0a1428 100%);
+    }
+
+    #stage.shake { animation: scShake 0.4s ease; }
+    #stage.shake-big { animation: scShakeBig 0.7s ease; }
+
+    @keyframes scShake {
+      12% { transform: translate(-6px, 3px); }
+      28% { transform: translate(5px, -4px); }
+      44% { transform: translate(-4px, -2px); }
+      60% { transform: translate(4px, 3px); }
+      76% { transform: translate(-2px, 1px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @keyframes scShakeBig {
+      8%  { transform: translate(-12px, 7px) rotate(-0.5deg); }
+      22% { transform: translate(11px, -9px) rotate(0.4deg); }
+      38% { transform: translate(-9px, -6px); }
+      54% { transform: translate(8px, 7px); }
+      70% { transform: translate(-5px, 3px); }
+      86% { transform: translate(3px, -2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* Frost vignette that breathes when the avalanche is close */
+    #vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 24;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      box-shadow: inset 0 0 120px 30px rgba(190, 230, 255, 0.55);
+    }
+
+    #vignette.on { opacity: 1; animation: vignettePulse 0.9s ease-in-out infinite; }
+
+    @keyframes vignettePulse {
+      50% { box-shadow: inset 0 0 160px 55px rgba(210, 240, 255, 0.7); }
+    }
+
+    /* ---------------------------------------------------- parallax bg */
+    .bg-layer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 0;
+      pointer-events: none;
+      background-repeat: repeat-x;
+      background-position: bottom;
+      will-change: background-position;
+    }
+
+    #bg-far {
+      z-index: 1;
+      opacity: 0.55;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' preserveAspectRatio='none'%3E%3Cpath d='M0 400 L90 210 L150 260 L260 120 L330 230 L420 90 L500 240 L580 160 L680 280 L800 180 L800 400 Z' fill='%231b3457'/%3E%3Cpath d='M244 142 L260 120 L276 144 L263 138 Z' fill='%23dcedff' opacity='0.85'/%3E%3Cpath d='M404 112 L420 90 L436 114 L421 106 Z' fill='%23dcedff' opacity='0.9'/%3E%3Cpath d='M566 180 L580 160 L594 182 L581 175 Z' fill='%23dcedff' opacity='0.75'/%3E%3C/svg%3E");
+      background-size: 100% 46%;
+    }
+
+    #bg-mid {
+      z-index: 2;
+      opacity: 0.8;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cpath d='M0 300 L60 190 L140 240 L230 110 L310 220 L400 150 L470 230 L560 100 L640 210 L720 170 L800 250 L800 300 Z' fill='%23132644'/%3E%3Cpath d='M216 130 L230 110 L245 132 L231 124 Z' fill='%23cfe6fb' opacity='0.85'/%3E%3Cpath d='M546 120 L560 100 L575 122 L561 114 Z' fill='%23cfe6fb' opacity='0.9'/%3E%3Cpath d='M100 265 L112 240 L124 265 Z' fill='%230d1c33'/%3E%3Cpath d='M330 262 L342 236 L354 262 Z' fill='%230d1c33'/%3E%3Cpath d='M660 268 L672 242 L684 268 Z' fill='%230d1c33'/%3E%3C/svg%3E");
+      background-size: 90% 38%;
+    }
+
+    /* ------------------------------------------------------ atmosphere */
+    #snowfall {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .snowflake {
+      position: absolute;
+      top: -8px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #eaf7ff;
+      box-shadow: 0 0 8px rgba(191, 232, 255, 0.9);
+      opacity: 0.7;
+      animation: snowFall linear infinite;
+    }
+
+    @keyframes snowFall {
+      0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+      12%  { opacity: 0.85; }
+      50%  { transform: translate(14px, 55vh) scale(0.9); }
+      100% { transform: translate(-8px, 110vh) scale(0.55); opacity: 0; }
+    }
+
+    /* ------------------------------------------------------- the world */
+    #world {
+      position: absolute;
+      inset: 0;
+      will-change: transform;
+      z-index: 5;
+    }
+
+    /* Platforms — frosted ice slabs the student taps */
+    .platform {
+      position: absolute;
+      height: 58px;
+      border-radius: 14px;
+      border: 3px solid #5b87b0;
+      background:
+        radial-gradient(ellipse at 30% 0%, rgba(255, 255, 255, 0.4), transparent 60%),
+        linear-gradient(180deg, #c2def4 0%, #82accf 55%, #4a6f96 100%);
+      box-shadow:
+        0 7px 0 #16293f,
+        0 12px 24px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 6;
+      pointer-events: none;
+      transition: filter 0.25s ease, opacity 0.4s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .platform::before {
+      content: "";
+      position: absolute;
+      inset: 3px 10% auto;
+      height: 5px;
+      border-radius: 5px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+    }
+
+    .platform .num {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(1.35rem, 4.5vmin, 2.1rem);
+      color: #0e2a47;
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.55), 0 0 14px rgba(191, 232, 255, 0.35);
+      pointer-events: none;
+      transition: color 0.2s ease, opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* dormant rows ahead — dim, numbers hidden */
+    .platform.dormant { filter: brightness(0.5) saturate(0.6); }
+    .platform.dormant .num { opacity: 0.18; transform: scale(0.8); }
+
+    /* the row the student must answer — glowing, clickable */
+    .platform.armed {
+      pointer-events: auto;
+      cursor: pointer;
+      border-color: var(--sc-glow);
+      animation: armedPulse 1.2s ease-in-out infinite;
+    }
+
+    .platform.armed .num {
+      color: #06203a;
+      animation: numReveal 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .platform.armed:hover {
+      filter: brightness(1.2);
+      transform: translateY(-4px);
+    }
+
+    .platform.armed:active { transform: translateY(2px); }
+
+    @keyframes armedPulse {
+      0%, 100% { box-shadow: 0 7px 0 #16293f, 0 0 18px rgba(191, 232, 255, 0.35); }
+      50%      { box-shadow: 0 7px 0 #16293f, 0 0 36px rgba(223, 241, 255, 0.75); }
+    }
+
+    @keyframes numReveal {
+      0%   { transform: scale(0.3) rotate(-12deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    /* platform you're standing on */
+    .platform.current {
+      border-color: var(--sc-safe);
+      box-shadow: 0 7px 0 #16293f, 0 0 26px rgba(94, 234, 212, 0.45);
+    }
+
+    .platform.current .num { color: #0b5a4c; }
+
+    .platform.passed { opacity: 0.45; filter: brightness(0.6) saturate(0.5); }
+
+    .platform.landed { animation: platLand 0.45s ease; }
+
+    @keyframes platLand {
+      0%   { transform: scaleX(1) translateY(0); }
+      35%  { transform: scaleX(1.08) translateY(5px); }
+      100% { transform: scaleX(1) translateY(0); }
+    }
+
+    /* wrong answer — the ice slab cracks, shatters and falls away */
+    .platform.shatter {
+      pointer-events: none;
+      animation: shatterFall 0.9s cubic-bezier(0.5, 0, 0.9, 0.4) forwards;
+    }
+
+    .platform.shatter .num { color: var(--sc-danger); }
+
+    @keyframes shatterFall {
+      0%   { transform: translateY(0) rotate(0); opacity: 1; filter: brightness(1.6); }
+      12%  { transform: translate(-3px, 4px) rotate(2deg); }
+      20%  { transform: translate(3px, 8px) rotate(-4deg); }
+      100% { transform: translateY(70vh) rotate(16deg); opacity: 0; }
+    }
+
+    .platform.start-pad { border-color: #7fa3c4; }
+
+    /* --------------------------------------------------------- player */
+    #player {
+      position: absolute;
+      width: 64px;
+      height: 72px;
+      margin-left: -32px;
+      z-index: 12;
+      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
+      pointer-events: none;
+    }
+
+    #player svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    #player.pose-jump { animation: jumpSquash 0.55s ease; }
+    #player.pose-land { animation: landBounce 0.35s ease; }
+
+    @keyframes jumpSquash {
+      0%   { transform: scale(1.15, 0.75); }
+      25%  { transform: scale(0.85, 1.2); }
+      100% { transform: scale(1, 1); }
+    }
+
+    @keyframes landBounce {
+      0%   { transform: scale(0.9, 1.15); }
+      40%  { transform: scale(1.12, 0.82); }
+      100% { transform: scale(1, 1); }
+    }
+
+    /* powdery trail puffs left behind mid-hop */
+    .trail-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      margin: -5px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffffff, #bfe0f8 70%);
+      box-shadow: 0 0 12px rgba(191, 224, 248, 0.9);
+      pointer-events: none;
+      z-index: 11;
+      animation: trailFade 0.5s ease-out forwards;
+    }
+
+    @keyframes trailFade {
+      to { transform: scale(0.1); opacity: 0; }
+    }
+
+    /* --------------------------------------- fail line + avalanche */
+    #danger-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 0;
+      z-index: 14;
+      pointer-events: none;
+    }
+
+    #danger-line .line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 3px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--sc-danger) 0 14px,
+        transparent 14px 22px
+      );
+      box-shadow:
+        0 0 10px rgba(255, 90, 138, 0.9),
+        0 0 24px rgba(190, 230, 255, 0.55);
+      animation: dangerDash 0.6s linear infinite;
+    }
+
+    #danger-line .label {
+      position: absolute;
+      right: 12px;
+      top: 10px;
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--sc-danger);
+      text-shadow: 0 0 10px rgba(255, 90, 138, 0.8);
+      background: rgba(10, 20, 40, 0.65);
+      padding: 0.15rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 90, 138, 0.45);
+    }
+
+    #danger-line.cold .line {
+      height: 5px;
+      box-shadow:
+        0 0 16px rgba(255, 90, 138, 1),
+        0 0 40px rgba(210, 240, 255, 0.8);
+      animation: dangerDash 0.3s linear infinite, dangerFlash 0.5s ease-in-out infinite;
+    }
+
+    @keyframes dangerDash { to { background-position: 22px 0; } }
+    @keyframes dangerFlash { 50% { opacity: 0.6; } }
+
+    /* the avalanche — a churning wall of snow descending from above */
+    #avalanche {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 120px;
+      z-index: 13;
+      pointer-events: none;
+    }
+
+    #avalanche .glow {
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      bottom: -70px;
+      height: 100px;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(230, 245, 255, 0.75), transparent 70%),
+        radial-gradient(ellipse at 30% 20%, rgba(190, 225, 255, 0.35), transparent 55%),
+        radial-gradient(ellipse at 70% 20%, rgba(255, 255, 255, 0.4), transparent 55%);
+      filter: blur(9px);
+      animation: powderGlow 2.2s ease-in-out infinite;
+    }
+
+    @keyframes powderGlow {
+      0%, 100% { opacity: 0.75; transform: scaleY(1); }
+      50% { opacity: 1; transform: scaleY(1.18); }
+    }
+
+    #avalanche .body {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg,
+          #2c4668 0%,
+          #55779c 22%,
+          #8fb4d4 48%,
+          #d3e9f9 78%,
+          #ffffff 100%);
+    }
+
+    #avalanche .front {
+      position: absolute;
+      left: -5%;
+      right: -5%;
+      bottom: -14px;
+      height: 36px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 36' preserveAspectRatio='none'%3E%3Cpath d='M0 14 Q15 30 30 14 T60 14 T90 14 T120 14 V0 H0Z' fill='%23ffffff'/%3E%3Cpath d='M0 10 Q15 24 30 10 T60 10 T90 10 T120 10 V0 H0Z' fill='%23d8ecfb' opacity='0.85'/%3E%3C/svg%3E")
+        repeat-x;
+      background-size: 120px 36px;
+      animation: powderWave 1.4s linear infinite;
+      filter: drop-shadow(0 4px 12px rgba(220, 240, 255, 0.85));
+    }
+
+    @keyframes powderWave { to { background-position: 120px 0; } }
+
+    .snow-chunk {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffffff, #9cc3e4 70%);
+      opacity: 0.75;
+      animation: chunkTumble linear infinite;
+    }
+
+    @keyframes chunkTumble {
+      0%   { transform: translateY(-24px) rotate(0) scale(0.4); opacity: 0; }
+      20%  { opacity: 0.85; }
+      80%  { opacity: 0.5; }
+      100% { transform: translateY(44px) rotate(160deg) scale(1.2); opacity: 0; }
+    }
+
+    /* --------------------------------------------------- frost meter */
+    #frost-meter {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: min(46vh, 340px);
+      border-radius: 999px;
+      border: 2px solid rgba(159, 216, 255, 0.4);
+      background: rgba(10, 20, 40, 0.6);
+      z-index: 30;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    #frost-meter .fill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 0%;
+      background: linear-gradient(180deg, #ffffff, #9fd8ff, #4a90d9);
+      transition: height 0.25s ease;
+    }
+
+    #frost-meter.cold { animation: meterBlink 0.5s ease-in-out infinite; }
+
+    @keyframes meterBlink {
+      50% { border-color: var(--sc-danger); box-shadow: 0 0 16px rgba(255, 90, 138, 0.8); }
+    }
+
+    #frost-label {
+      position: absolute;
+      left: 6px;
+      top: calc(50% + min(23vh, 170px) + 8px);
+      z-index: 30;
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--sc-dim);
+      pointer-events: none;
+    }
+
+    .hud-chip {
+      background: rgba(74, 144, 217, 0.12);
+      border: 1px solid rgba(159, 216, 255, 0.28);
+      border-radius: 999px;
+      padding: 0.32rem 0.75rem;
+      font-weight: 800;
+      font-size: 0.82rem;
+      color: var(--sc-text);
+      white-space: nowrap;
+    }
+
+    .hud-chip .val { color: var(--sc-frost); }
+
+    .hud-chip.combo-chip { display: none; border-color: rgba(94, 234, 212, 0.5); }
+    .hud-chip.combo-chip.show { display: block; animation: rankPop 0.3s ease; }
+    .hud-chip.combo-chip .val { color: var(--sc-safe); }
+
+    /* prompt ribbon — the question, floating top-center */
+    #prompt-ribbon {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.45rem 1.1rem;
+      background: rgba(10, 20, 40, 0.78);
+      border: 1px solid rgba(159, 216, 255, 0.4);
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      font-family: var(--font-display);
+      font-size: clamp(0.95rem, 2.6vw, 1.25rem);
+      font-weight: 600;
+      white-space: nowrap;
+      max-width: calc(100vw - 20px);
+    }
+
+    #prompt-ribbon .hl { color: var(--sc-frost); font-weight: 700; }
+    #prompt-ribbon .q { color: var(--sc-safe); font-weight: 700; }
+    #prompt-ribbon .prog {
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--sc-dim);
+    }
+
+    #prompt-ribbon.bump { animation: ribbonBump 0.35s ease; }
+
+    @keyframes ribbonBump {
+      40% { transform: translateX(-50%) scale(1.08); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
+    /* ------------------------------------------------------------- FX */
+    #fx-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      overflow: hidden;
+    }
+
+    .spark {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      margin: -4px;
+      border-radius: 50%;
+      background: #eaf7ff;
+      box-shadow: 0 0 10px var(--sc-frost);
+      animation: sparkFly 0.7s ease-out forwards;
+    }
+
+    @keyframes sparkFly {
+      0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+
+    .float-text {
+      position: absolute;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--sc-frost);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      animation: floatUp 0.95s ease-out forwards;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .float-text.bad { color: var(--sc-danger); font-size: 1.15rem; }
+    .float-text.big { font-size: 2rem; color: #fff; }
+    .float-text.combo { color: var(--sc-safe); font-size: 1.6rem; }
+
+    @keyframes floatUp {
+      0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+      20%  { transform: translate(-50%, -12px) scale(1.15); opacity: 1; }
+      100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+    }
+
+    .screen-flash {
+      position: absolute;
+      inset: 0;
+      background: rgba(200, 232, 255, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 25;
+    }
+
+    .screen-flash.go { animation: flashPop 0.35s ease; }
+    .screen-flash.bad { background: rgba(255, 90, 138, 0.3); }
+    .screen-flash.win { background: rgba(223, 241, 255, 0.5); }
+
+    @keyframes flashPop {
+      0% { opacity: 0.85; }
+      100% { opacity: 0; }
+    }
+
+    /* --------------------------------------------------------- overlay */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background:
+        radial-gradient(ellipse at 50% 30%, rgba(74, 144, 217, 0.28), transparent 55%),
+        rgba(5, 10, 22, 0.88);
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay.hidden { display: none; }
+
+    .overlay-card {
+      width: min(560px, 100%);
+      max-height: min(92vh, 720px);
+      overflow: auto;
+      background: linear-gradient(165deg, rgba(24, 44, 74, 0.96), rgba(10, 20, 40, 0.98));
+      border: 1px solid rgba(159, 216, 255, 0.35);
+      border-radius: 22px;
+      box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.55),
+        0 0 40px rgba(120, 190, 255, 0.18);
+      padding: 1.4rem 1.35rem 1.5rem;
+      text-align: center;
+    }
+
+    .overlay-card h2 {
+      margin: 0 0 0.4rem;
+      font-family: var(--font-display);
+      font-size: clamp(1.55rem, 4vw, 2rem);
+      background: linear-gradient(90deg, #ffffff, var(--sc-frost));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .overlay-card p {
+      margin: 0 0 1rem;
+      color: var(--sc-dim);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.75rem 1.4rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--sc-frost), var(--sc-ice));
+      color: #06203a;
+      box-shadow: 0 4px 0 #1c4a75, 0 0 20px rgba(120, 190, 255, 0.4);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--sc-dim);
+      border: 1px solid rgba(140, 166, 196, 0.35);
+      margin-top: 0.65rem;
+    }
+
+    /* number picker */
+    .pick-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.55rem;
+      margin: 0.85rem 0 0.5rem;
+    }
+
+    .pick-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.85rem 0.4rem 0.7rem;
+      border-radius: 16px;
+      border: 2px solid rgba(159, 216, 255, 0.3);
+      background: linear-gradient(180deg, rgba(30, 54, 88, 0.9), rgba(12, 24, 44, 0.95));
+      color: var(--sc-text);
+      cursor: pointer;
+      font-family: var(--font-display);
+      transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .pick-btn:hover {
+      transform: translateY(-3px);
+      border-color: var(--sc-frost);
+      box-shadow: 0 0 22px rgba(120, 190, 255, 0.35);
+    }
+
+    .pick-btn .n {
+      font-size: 1.65rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .pick-btn .sub {
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--sc-dim);
+      letter-spacing: 0.02em;
+    }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+
+    .rank-C { background: rgba(140, 140, 150, 0.25); color: #c8c8d0; border-color: rgba(180, 180, 190, 0.4); }
+    .rank-B { background: rgba(80, 180, 120, 0.2); color: #7dffa8; border-color: rgba(80, 220, 140, 0.45); }
+    .rank-A { background: rgba(80, 140, 255, 0.22); color: #9ec5ff; border-color: rgba(100, 160, 255, 0.5); }
+    .rank-S {
+      background: linear-gradient(135deg, rgba(200, 240, 255, 0.3), rgba(120, 190, 255, 0.35));
+      color: #ffffff;
+      border-color: rgba(223, 241, 255, 0.65);
+      box-shadow: 0 0 12px rgba(159, 216, 255, 0.45);
+      animation: sGlow 1.8s ease-in-out infinite;
+    }
+
+    @keyframes sGlow {
+      50% { box-shadow: 0 0 20px rgba(191, 232, 255, 0.75); }
+    }
+
+    .rank-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--sc-dim);
+    }
+
+    .rank-legend span { display: inline-flex; align-items: center; gap: 0.25rem; }
+
+    .end-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.85rem 0 1.1rem;
+    }
+
+    .end-stat {
+      background: rgba(74, 144, 217, 0.12);
+      border: 1px solid rgba(159, 216, 255, 0.28);
+      border-radius: 12px;
+      padding: 0.55rem 0.9rem;
+      min-width: 90px;
+    }
+
+    .end-stat .lbl {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--sc-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .end-stat .num {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--sc-frost);
+    }
+
+    .rank-up-banner {
+      margin: 0.5rem 0 0.85rem;
+      padding: 0.55rem 0.85rem;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(223, 241, 255, 0.15), rgba(74, 144, 217, 0.2));
+      border: 1px solid rgba(191, 232, 255, 0.45);
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--sc-frost);
+      animation: rankPop 0.6s ease;
+    }
+
+    @keyframes rankPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 560px) {
+      .hud-chip:nth-child(1) { display: none; }
+      #frost-meter { height: 32vh; }
+      #frost-label { top: calc(50% + 16vh + 8px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="sc-topbar">
+    <div class="sc-left">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">Avalanche Run</h1>
+    </div>
+    <div class="hud">
+      <div class="hud-chip combo-chip" id="combo-chip">Combo <span class="val" id="combo">0</span></div>
+      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip rank-chip">×<span id="skip-label">—</span> · <span class="val" id="rank-label">C</span></div>
+    </div>
+  </div>
+
+  <div class="sc-stage-wrap">
+  <div id="stage">
+    <div class="bg-layer" id="bg-far" aria-hidden="true"></div>
+    <div class="bg-layer" id="bg-mid" aria-hidden="true"></div>
+    <div id="snowfall" aria-hidden="true"></div>
+
+    <div id="world">
+      <div id="platforms"></div>
+      <div id="player" aria-hidden="true">
+        <svg id="player-svg" viewBox="0 0 64 72" xmlns="http://www.w3.org/2000/svg">
+          <g id="pose-idle">
+            <ellipse cx="32" cy="66" rx="14" ry="4" fill="rgba(0,0,0,0.35)" />
+            <rect x="22" y="28" width="20" height="26" rx="8" fill="#ef5d5d" />
+            <circle cx="32" cy="20" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="19" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="19" r="2.2" fill="#2a1210" />
+            <path d="M27 24 Q32 27 37 24" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M24 30 Q32 34 40 30" stroke="#ffd166" stroke-width="4" stroke-linecap="round" fill="none" />
+            <path d="M18 34 Q14 40 16 48" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 34 Q50 40 48 48" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M26 52 L24 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M38 52 L40 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M20 12 Q32 2 44 12" stroke="#2f5d8a" stroke-width="6" stroke-linecap="round" fill="none" />
+            <circle cx="32" cy="4" r="3.2" fill="#eaf7ff" />
+          </g>
+          <g id="pose-crouch" display="none">
+            <ellipse cx="32" cy="66" rx="16" ry="4" fill="rgba(0,0,0,0.35)" />
+            <rect x="20" y="36" width="24" height="20" rx="8" fill="#ef5d5d" />
+            <circle cx="32" cy="28" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="27" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="27" r="2.2" fill="#2a1210" />
+            <path d="M27 32 Q32 34 37 32" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M24 38 Q32 42 40 38" stroke="#ffd166" stroke-width="4" stroke-linecap="round" fill="none" />
+            <path d="M18 40 Q10 44 12 50" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 40 Q54 44 52 50" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M24 54 L20 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M40 54 L44 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M20 20 Q32 10 44 20" stroke="#2f5d8a" stroke-width="6" stroke-linecap="round" fill="none" />
+            <circle cx="32" cy="12" r="3.2" fill="#eaf7ff" />
+          </g>
+          <g id="pose-jump" display="none">
+            <ellipse cx="32" cy="68" rx="10" ry="3" fill="rgba(0,0,0,0.2)" />
+            <rect x="22" y="24" width="20" height="24" rx="8" fill="#ef5d5d" />
+            <circle cx="32" cy="16" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="15" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="15" r="2.2" fill="#2a1210" />
+            <path d="M27 20 Q32 23 37 20" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M24 26 Q32 30 40 26" stroke="#ffd166" stroke-width="4" stroke-linecap="round" fill="none" />
+            <path d="M18 30 Q8 22 10 14" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 30 Q56 22 54 14" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M26 46 L20 58" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M38 46 L48 54" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M20 8 Q32 -2 44 8" stroke="#2f5d8a" stroke-width="6" stroke-linecap="round" fill="none" />
+            <circle cx="32" cy="0" r="3.2" fill="#eaf7ff" />
+            <ellipse cx="32" cy="64" rx="7" ry="4" fill="#eaf7ff" opacity="0.85" />
+          </g>
+          <g id="pose-celebrate" display="none">
+            <ellipse cx="32" cy="66" rx="14" ry="4" fill="rgba(0,0,0,0.35)" />
+            <rect x="22" y="28" width="20" height="26" rx="8" fill="#ef5d5d" />
+            <circle cx="32" cy="20" r="12" fill="#ffd1a8" />
+            <circle cx="27" cy="19" r="2.2" fill="#2a1210" />
+            <circle cx="37" cy="19" r="2.2" fill="#2a1210" />
+            <path d="M26 24 Q32 28 38 24" stroke="#2a1210" stroke-width="1.8" fill="none" stroke-linecap="round" />
+            <path d="M24 30 Q32 34 40 30" stroke="#ffd166" stroke-width="4" stroke-linecap="round" fill="none" />
+            <path d="M18 34 Q12 18 16 10" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M46 34 Q52 18 48 10" stroke="#ef5d5d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M26 52 L24 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M38 52 L40 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <circle cx="16" cy="8" r="3" fill="#eaf7ff" />
+            <circle cx="48" cy="8" r="3" fill="#eaf7ff" />
+            <path d="M20 12 Q32 2 44 12" stroke="#2f5d8a" stroke-width="6" stroke-linecap="round" fill="none" />
+            <circle cx="32" cy="4" r="3.2" fill="#eaf7ff" />
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div id="avalanche">
+      <div class="body">
+        <div class="bubbles" id="snow-chunks"></div>
+        <div class="front"></div>
+      </div>
+      <div class="glow"></div>
+    </div>
+
+    <div id="danger-line">
+      <div class="line"></div>
+      <div class="label">FAIL LINE</div>
+    </div>
+
+    <div id="frost-meter"><div class="fill"></div></div>
+    <div id="frost-label">FROST</div>
+
+    <div id="prompt-ribbon">
+      <span id="prompt-text">Pick a platform!</span>
+      <span class="prog" id="progress-step">0/12</span>
+    </div>
+
+    <div id="vignette"></div>
+    <div id="fx-layer"></div>
+    <div class="screen-flash" id="flash"></div>
+
+    <div class="overlay" id="overlay">
+      <div class="overlay-card" id="overlay-card">
+        <h2>Avalanche Run</h2>
+        <p>The avalanche is coming! Skip-count DOWN the mountain — tap the platform with the next countdown number to hop to safety. Stay below the fail line!</p>
+        <button class="btn btn-primary" id="start-btn">Choose your run</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/avalanche.js"></script>
+</body>
+</html>
