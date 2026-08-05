@@ -126,27 +126,196 @@
 
   // --------------------------------------------------------------- audio ---
   let audio = null;
+  let musicGain = null;
+  let sfxGain = null;
+  let musicTimer = null;
+  let musicStep = 0;
+  let nextNoteTime = 0;
+  let musicHot = false;
+
+  const BPM_NORMAL = 96;
+  const BPM_HOT = 118;
+
+  function musicStepDur() {
+    return 60 / (musicHot ? BPM_HOT : BPM_NORMAL) / 4;
+  }
+
+  // E minor loop — circuit-lab synth pulse (Em — C — G — Am)
+  const BASS_NOTES = [40, 36, 43, 45];
+  const CHORDS = [
+    [52, 55, 59, 64],
+    [48, 52, 55, 60],
+    [55, 59, 62, 67],
+    [57, 60, 64, 69]
+  ];
+  const ARP_A = [0, 2, 1, 3, 2, 1, 0, 2];
+  const ARP_B = [3, 2, 1, 0, 1, 2, 3, 2];
+
+  function midiToFreq(n) {
+    return 440 * Math.pow(2, (n - 69) / 12);
+  }
 
   function ensureAudio() {
     if (!audio) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return null;
       audio = new Ctx();
+      musicGain = audio.createGain();
+      musicGain.gain.value = 0.38;
+      musicGain.connect(audio.destination);
+      sfxGain = audio.createGain();
+      sfxGain.gain.value = 0.92;
+      sfxGain.connect(audio.destination);
     }
     if (audio.state === "suspended") audio.resume();
     return audio;
   }
 
-  function noiseBuffer(ac, seconds) {
-    const buf = ac.createBuffer(1, Math.max(1, ac.sampleRate * seconds), ac.sampleRate);
+  function noiseBuffer(seconds) {
+    const buf = audio.createBuffer(1, Math.max(1, audio.sampleRate * seconds), audio.sampleRate);
     const data = buf.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     return buf;
   }
 
+  function tone(dest, opts) {
+    const t = opts.t !== undefined ? opts.t : audio.currentTime;
+    const dur = opts.dur || 0.2;
+    const osc = audio.createOscillator();
+    osc.type = opts.type || "sine";
+    osc.frequency.setValueAtTime(opts.freq, t);
+    if (opts.freqEnd) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, opts.freqEnd), t + dur);
+    }
+    const g = audio.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(opts.gain || 0.2, t + (opts.attack || 0.01));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let head = osc;
+    if (opts.filter) {
+      const f = audio.createBiquadFilter();
+      f.type = opts.filterType || "lowpass";
+      f.frequency.value = opts.filter;
+      osc.connect(f);
+      head = f;
+    }
+    head.connect(g);
+    g.connect(dest);
+    osc.start(t);
+    osc.stop(t + dur + 0.08);
+  }
+
+  function scheduleMusicStep(stepIdx, t) {
+    const dur = musicStepDur();
+    const bar = Math.floor(stepIdx / 16) % 4;
+    const pos = stepIdx % 16;
+    const chord = CHORDS[bar];
+    const arp = (Math.floor(stepIdx / 32) % 2 === 0) ? ARP_A : ARP_B;
+    const boost = musicHot ? 1.22 : 1;
+    const arpFilter = musicHot ? 2400 : 1300;
+
+    if (pos % 4 === 0) {
+      const jump = pos === 8 && Math.random() < 0.45;
+      tone(musicGain, {
+        type: "triangle",
+        freq: midiToFreq(BASS_NOTES[bar] + (jump ? 12 : 0)),
+        t, dur: 0.26, gain: 0.26 * boost, attack: 0.01, filter: 380
+      });
+    }
+
+    if (pos % 2 === 0) {
+      const midi = chord[arp[(pos / 2) % arp.length]] + 12;
+      tone(musicGain, {
+        type: "sawtooth",
+        freq: midiToFreq(midi),
+        t, dur: 0.14, gain: 0.048 * boost, attack: 0.004, filter: arpFilter
+      });
+      if (pos % 4 === 0) {
+        tone(musicGain, {
+          type: "sine",
+          freq: midiToFreq(midi),
+          t: t + dur * 2,
+          dur: 0.12,
+          gain: 0.022 * boost,
+          attack: 0.006,
+          filter: 900
+        });
+      }
+    }
+
+    if (pos === 0) {
+      const barLen = dur * 16;
+      tone(musicGain, {
+        type: "sawtooth",
+        freq: midiToFreq(chord[0]),
+        t, dur: barLen, gain: 0.026, attack: 0.45, filter: 620
+      });
+      tone(musicGain, {
+        type: "sawtooth",
+        freq: midiToFreq(chord[2]) * 1.002,
+        t, dur: barLen, gain: 0.021, attack: 0.5, filter: 620
+      });
+    }
+
+    if (pos % 4 === 2 || (musicHot && pos % 2 === 1)) {
+      const src = audio.createBufferSource();
+      src.buffer = noiseBuffer(0.035);
+      const f = audio.createBiquadFilter();
+      f.type = "highpass";
+      f.frequency.value = musicHot ? 5200 : 6800;
+      const g = audio.createGain();
+      g.gain.setValueAtTime((musicHot ? 0.055 : 0.034) * boost, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+      src.connect(f).connect(g).connect(musicGain);
+      src.start(t);
+    }
+
+    if (pos % 8 === 4 && Math.random() < 0.35) {
+      tone(musicGain, {
+        type: "square",
+        freq: midiToFreq(76 + (bar % 2) * 2),
+        t, dur: 0.06, gain: 0.012 * boost, attack: 0.002, filter: 1800
+      });
+    }
+
+    if (musicHot && pos % 4 === 0) {
+      tone(musicGain, {
+        type: "sine",
+        freq: 92,
+        freqEnd: 38,
+        t, dur: 0.16, gain: 0.18, attack: 0.004
+      });
+    }
+  }
+
+  function musicScheduler() {
+    if (!audio || document.hidden) return;
+    while (nextNoteTime < audio.currentTime + 0.28) {
+      scheduleMusicStep(musicStep, nextNoteTime);
+      nextNoteTime += musicStepDur();
+      musicStep += 1;
+    }
+  }
+
+  function startMusic() {
+    if (!ensureAudio() || musicTimer) return;
+    musicStep = 0;
+    musicHot = false;
+    nextNoteTime = audio.currentTime + 0.05;
+    musicScheduler();
+    musicTimer = setInterval(musicScheduler, 85);
+  }
+
+  function stopMusic() {
+    if (musicTimer) {
+      clearInterval(musicTimer);
+      musicTimer = null;
+    }
+  }
+
   function playZap(streakLevel) {
     const ac = ensureAudio();
-    if (!ac) return;
+    if (!ac || !sfxGain) return;
     const t0 = ac.currentTime;
     const pitchMul = 1 + Math.min(streakLevel, 12) * 0.07;
 
@@ -160,12 +329,12 @@
     og.gain.setValueAtTime(0.0001, t0);
     og.gain.exponentialRampToValueAtTime(0.16, t0 + 0.012);
     og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
-    osc.connect(og).connect(ac.destination);
+    osc.connect(og).connect(sfxGain);
     osc.start(t0); osc.stop(t0 + 0.32);
 
     // crackle burst
     const noise = ac.createBufferSource();
-    noise.buffer = noiseBuffer(ac, 0.25);
+    noise.buffer = noiseBuffer(0.25);
     const bp = ac.createBiquadFilter();
     bp.type = "bandpass";
     bp.frequency.setValueAtTime(2400 * pitchMul, t0);
@@ -173,7 +342,7 @@
     const ng = ac.createGain();
     ng.gain.setValueAtTime(0.22, t0);
     ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
-    noise.connect(bp).connect(ng).connect(ac.destination);
+    noise.connect(bp).connect(ng).connect(sfxGain);
     noise.start(t0); noise.stop(t0 + 0.25);
 
     // low thump for punch
@@ -184,13 +353,13 @@
     const sg = ac.createGain();
     sg.gain.setValueAtTime(0.22, t0);
     sg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
-    sub.connect(sg).connect(ac.destination);
+    sub.connect(sg).connect(sfxGain);
     sub.start(t0); sub.stop(t0 + 0.2);
   }
 
   function playFizzle() {
     const ac = ensureAudio();
-    if (!ac) return;
+    if (!ac || !sfxGain) return;
     const t0 = ac.currentTime;
 
     const osc = ac.createOscillator();
@@ -200,11 +369,11 @@
     const og = ac.createGain();
     og.gain.setValueAtTime(0.16, t0);
     og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
-    osc.connect(og).connect(ac.destination);
+    osc.connect(og).connect(sfxGain);
     osc.start(t0); osc.stop(t0 + 0.42);
 
     const noise = ac.createBufferSource();
-    noise.buffer = noiseBuffer(ac, 0.35);
+    noise.buffer = noiseBuffer(0.35);
     const lp = ac.createBiquadFilter();
     lp.type = "lowpass";
     lp.frequency.setValueAtTime(900, t0);
@@ -212,13 +381,13 @@
     const ng = ac.createGain();
     ng.gain.setValueAtTime(0.14, t0);
     ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
-    noise.connect(lp).connect(ng).connect(ac.destination);
+    noise.connect(lp).connect(ng).connect(sfxGain);
     noise.start(t0); noise.stop(t0 + 0.35);
   }
 
   function playSnapTick() {
     const ac = ensureAudio();
-    if (!ac) return;
+    if (!ac || !sfxGain) return;
     const t0 = ac.currentTime;
     const osc = ac.createOscillator();
     osc.type = "square";
@@ -226,7 +395,7 @@
     const g = ac.createGain();
     g.gain.setValueAtTime(0.05, t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
-    osc.connect(g).connect(ac.destination);
+    osc.connect(g).connect(sfxGain);
     osc.start(t0); osc.stop(t0 + 0.06);
   }
 
@@ -451,6 +620,7 @@
     tip.x = baseNode.x;
     tip.y = baseNode.y;
     updateHud();
+    startMusic();
     try {
       await MathArcade.ensurePlayer();
     } catch (err) {
@@ -460,6 +630,7 @@
 
   async function endGame() {
     if (mode === "idle" || mode === "over") return;
+    stopMusic();
     mode = "over";
     overlayTitle.textContent = "Circuit closed!";
     overlayText.textContent = streak >= 5
@@ -749,6 +920,7 @@
   function update(dt) {
     time += dt;
     modeT += dt;
+    musicHot = streak >= 3 && (mode === "playing" || mode === "celebrate");
 
     // idle attract mode: wire lazily wanders behind the overlay
     if (mode === "idle" || mode === "over") {
@@ -844,5 +1016,6 @@
   pointer.y = H * 0.45;
   tip.x = baseNode.x;
   tip.y = baseNode.y;
+  window.addEventListener("pagehide", stopMusic);
   requestAnimationFrame(frame);
 })();
