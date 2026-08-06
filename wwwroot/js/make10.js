@@ -64,6 +64,56 @@
   let time = 0;
   let lastFrame = performance.now();
 
+  let lastSubmittedScore = 0;
+  let scoreSubmitTimer = null;
+
+  function scoreToReport() {
+    if (score <= 0) return 0;
+    return Math.max(0, Math.floor(Math.max(score, best)));
+  }
+
+  async function flushScoreReport(options = {}) {
+    const value = scoreToReport();
+    if (value <= 0 || value <= lastSubmittedScore) return;
+    try {
+      await MathArcade.submitScore(GAME_ID, value, options);
+      lastSubmittedScore = value;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function scheduleScoreReport() {
+    if (scoreSubmitTimer) clearTimeout(scoreSubmitTimer);
+    scoreSubmitTimer = setTimeout(() => {
+      scoreSubmitTimer = null;
+      flushScoreReport().catch((err) => console.error(err));
+    }, 2000);
+  }
+
+  async function backfillIdleBestReport() {
+    if (best <= 0 || best <= lastSubmittedScore) return;
+    try {
+      await MathArcade.ensurePlayer();
+      await MathArcade.submitScore(GAME_ID, best);
+      lastSubmittedScore = Math.max(lastSubmittedScore, best);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function flushScoreReportOnPageHide() {
+    stopMusic();
+    if (score <= 0) return;
+    const value = scoreToReport();
+    if (value <= 0 || value <= lastSubmittedScore) return;
+    MathArcade.submitScore(GAME_ID, value, { keepalive: true })
+      .then(() => {
+        lastSubmittedScore = value;
+      })
+      .catch((err) => console.error(err));
+  }
+
   // -------------------------------------------------------------- helpers --
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
@@ -572,6 +622,7 @@
       if (score > best) {
         best = score;
         localStorage.setItem(BEST_KEY, String(best));
+        scheduleScoreReport();
       }
       node.flashT = 1;
       baseNode.flashT = 1;
@@ -641,7 +692,11 @@
     startBtn.textContent = "Play again";
     overlay.classList.remove("hidden");
     try {
-      await MathArcade.submitScore(GAME_ID, score);
+      if (scoreSubmitTimer) {
+        clearTimeout(scoreSubmitTimer);
+        scoreSubmitTimer = null;
+      }
+      await flushScoreReport();
       await MathArcade.saveProgress(GAME_ID, 1, { correctCount, lastScore: score, bestScore: best });
     } catch (err) {
       console.error(err);
@@ -1016,6 +1071,32 @@
   pointer.y = H * 0.45;
   tip.x = baseNode.x;
   tip.y = baseNode.y;
-  window.addEventListener("pagehide", stopMusic);
+  window.addEventListener("pagehide", flushScoreReportOnPageHide);
+
+  (async () => {
+    try {
+      await MathArcade.ensurePlayer();
+      const progress = await MathArcade.loadProgress(GAME_ID);
+      if (progress && progress.statsJson) {
+        let stats = {};
+        try {
+          stats = JSON.parse(progress.statsJson);
+        } catch (_) { /* ignore */ }
+        const serverBest = Number(stats.bestScore || 0);
+        if (serverBest > best) {
+          best = serverBest;
+          localStorage.setItem(BEST_KEY, String(best));
+          bestEl.textContent = best;
+        }
+        if (serverBest > lastSubmittedScore) {
+          lastSubmittedScore = serverBest;
+        }
+      }
+      await backfillIdleBestReport();
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+
   requestAnimationFrame(frame);
 })();

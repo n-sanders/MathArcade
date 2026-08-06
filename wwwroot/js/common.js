@@ -82,9 +82,11 @@
   }
 
   async function api(path, options = {}) {
+    const { keepalive, ...rest } = options;
     const res = await fetch(path, {
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-      ...options
+      headers: { "Content-Type": "application/json", ...(rest.headers || {}) },
+      keepalive: keepalive === true,
+      ...rest
     });
     if (!res.ok) {
       let message = res.statusText;
@@ -252,10 +254,15 @@
     });
   }
 
-  async function submitScore(gameId, score) {
-    await ensurePlayer();
+  async function submitScore(gameId, score, options = {}) {
+    if (!options.keepalive) {
+      await ensurePlayer();
+    } else if (!getPlayerName()) {
+      return null;
+    }
     return api("/api/scores", {
       method: "POST",
+      keepalive: options.keepalive === true,
       body: JSON.stringify({
         deviceToken: getOrCreateDeviceToken(),
         gameId,
