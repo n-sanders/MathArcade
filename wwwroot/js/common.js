@@ -40,6 +40,13 @@
       howTo: "Study the primes, then move your mouse to light the dark number field and click each target."
     },
     {
+      id: "calendar",
+      title: "Calendar Scramble",
+      path: "/games/calendar.html",
+      blurb: "The months got scattered! Drag them back into calendar order before the clock drains your points.",
+      howTo: "The year stacks up on the left, but some months have been flung across the board. Drag each missing month to its ordinal slot — 1st through 12th. Fast placements earn big points; a wrong slot costs 5 and bounces the month back. Two rounds per stage, with more months missing each stage, all the way up to a fully scrambled year!"
+    },
+    {
       id: "memorymatch",
       title: "Memory Match Math",
       path: "/games/memorymatch.html",
