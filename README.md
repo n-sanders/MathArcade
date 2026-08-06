@@ -8,7 +8,7 @@ Self-hosted math practice site for kids. ASP.NET Core 9 serves the API and stati
 docker compose up --build
 ```
 
-Open http://localhost:8080
+Open http://localhost:5087
 
 Player data lives in the `matharcade-data` Docker volume (`/data/matharcade.db` inside the container).
 
@@ -18,4 +18,4 @@ Player data lives in the `matharcade-data` Docker volume (`/data/matharcade.db` 
 dotnet run
 ```
 
-Uses `./data/matharcade.db` by default.
+Open http://localhost:5080. Uses `./data/matharcade.db` by default.
