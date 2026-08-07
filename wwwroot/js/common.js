@@ -55,10 +55,10 @@
     },
     {
       id: "bonus",
-      title: "Daily Bonus",
+      title: "Dino Dash",
       path: "/games/bonus.html",
-      blurb: "A surprise reward for finishing today's math activities.",
-      howTo: "Complete a saved session in each activity today to unlock this bonus. Come back tomorrow and do it again!",
+      blurb: "Daily bonus: an endless runner — jump the cacti, duck the birds, outlast the speed-up!",
+      howTo: "Complete a saved session in each activity today to unlock this bonus, then come back tomorrow and do it again! In the run: Space/↑/tap to jump, ↓ or hold DUCK to slide under birds. The canyon keeps speeding up and your score is simply how long you survive.",
       bonus: true
     }
   ];
