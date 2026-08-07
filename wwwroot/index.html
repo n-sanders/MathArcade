@@ -35,6 +35,7 @@
           <strong>How to play</strong>
           <span id="preview-howto">—</span>
         </div>
+        <p class="bonus-status" id="preview-bonus-status" hidden></p>
         <div class="scores">
           <h3>High scores</h3>
           <ul id="preview-scores"></ul>
@@ -47,18 +48,29 @@
   <script src="/js/common.js"></script>
   <script>
     (function () {
-      const { GAMES, getPlayerName, setPlayerName, ensurePlayer, loadTopScores, formatScore } = MathArcade;
+      const {
+        GAMES,
+        getPlayerName,
+        setPlayerName,
+        ensurePlayer,
+        loadTopScores,
+        loadAllProgress,
+        getDailyBonusUnlockStatus,
+        formatScore
+      } = MathArcade;
 
       const listEl = document.getElementById("activity-list");
       const titleEl = document.getElementById("preview-title");
       const blurbEl = document.getElementById("preview-blurb");
       const howtoEl = document.getElementById("preview-howto");
+      const bonusStatusEl = document.getElementById("preview-bonus-status");
       const scoresEl = document.getElementById("preview-scores");
       const launchEl = document.getElementById("preview-launch");
       const nameInput = document.getElementById("player-name");
       const form = document.getElementById("player-form");
 
-      let selectedId = GAMES[0].id;
+      let selectedId = GAMES.find((g) => !g.bonus)?.id || GAMES[0].id;
+      let unlockStatus = getDailyBonusUnlockStatus({});
 
       nameInput.value = getPlayerName();
 
@@ -69,20 +81,98 @@
         nameInput.value = name;
         try {
           await ensurePlayer(name);
+          await refreshUnlockStatus();
         } catch (err) {
           alert(err.message || "Could not save player.");
         }
       });
 
-      GAMES.forEach((game, index) => {
+      GAMES.forEach((game) => {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "activity-btn" + (index === 0 ? " active" : "");
+        btn.className = "activity-btn" + (game.id === selectedId ? " active" : "");
         btn.dataset.id = game.id;
-        btn.innerHTML = `<span class="title">${game.title}</span><span class="hint">${game.blurb}</span>`;
+        if (game.bonus) btn.classList.add("bonus");
+        btn.innerHTML =
+          `<span class="title">${escapeHtml(game.title)}</span>` +
+          `<span class="hint">${escapeHtml(game.blurb)}</span>` +
+          (game.bonus ? `<span class="lock-badge" data-lock-badge hidden></span>` : "");
         btn.addEventListener("click", () => selectGame(game.id));
         listEl.appendChild(btn);
       });
+
+      function bonusProgressHint(status) {
+        if (status.unlocked) {
+          return `Unlocked for today — ${status.completed} of ${status.required} activities done.`;
+        }
+        if (status.required === status.catalogIds.length) {
+          return `Finish all ${status.required} activities today to unlock (${status.completed} of ${status.required} done).`;
+        }
+        return `Finish ${status.required} activities today to unlock (${status.completed} of ${status.required} done).`;
+      }
+
+      function applyUnlockUi() {
+        listEl.querySelectorAll(".activity-btn.bonus").forEach((btn) => {
+          const locked = !unlockStatus.unlocked;
+          btn.classList.toggle("locked", locked);
+          btn.setAttribute("aria-disabled", locked ? "true" : "false");
+          const badge = btn.querySelector("[data-lock-badge]");
+          if (badge) {
+            badge.hidden = !locked;
+            badge.textContent = locked
+              ? `${unlockStatus.completed}/${unlockStatus.required} today`
+              : "";
+          }
+        });
+
+        if (selectedId) {
+          updatePreviewForSelection(selectedId);
+        }
+      }
+
+      function updatePreviewForSelection(id) {
+        const game = GAMES.find((g) => g.id === id);
+        if (!game) return;
+
+        const lockedBonus = !!(game.bonus && !unlockStatus.unlocked);
+        titleEl.textContent = game.title;
+        blurbEl.textContent = game.blurb;
+        howtoEl.textContent = game.howTo;
+
+        if (game.bonus) {
+          bonusStatusEl.hidden = false;
+          bonusStatusEl.textContent = bonusProgressHint(unlockStatus);
+          bonusStatusEl.classList.toggle("unlocked", unlockStatus.unlocked);
+        } else {
+          bonusStatusEl.hidden = true;
+          bonusStatusEl.textContent = "";
+          bonusStatusEl.classList.remove("unlocked");
+        }
+
+        if (lockedBonus) {
+          launchEl.href = "#";
+          launchEl.classList.add("disabled");
+          launchEl.setAttribute("aria-disabled", "true");
+          launchEl.textContent = "Locked";
+          launchEl.onclick = (e) => e.preventDefault();
+        } else {
+          launchEl.href = game.path;
+          launchEl.classList.remove("disabled");
+          launchEl.removeAttribute("aria-disabled");
+          launchEl.textContent = "Launch";
+          launchEl.onclick = null;
+        }
+      }
+
+      async function refreshUnlockStatus() {
+        try {
+          const progressByGameId = await loadAllProgress();
+          unlockStatus = getDailyBonusUnlockStatus(progressByGameId);
+        } catch {
+          unlockStatus = getDailyBonusUnlockStatus({});
+        }
+        applyUnlockUi();
+      }
 
       async function selectGame(id) {
         selectedId = id;
@@ -90,10 +180,13 @@
         listEl.querySelectorAll(".activity-btn").forEach((btn) => {
           btn.classList.toggle("active", btn.dataset.id === id);
         });
-        titleEl.textContent = game.title;
-        blurbEl.textContent = game.blurb;
-        howtoEl.textContent = game.howTo;
-        launchEl.href = game.path;
+        updatePreviewForSelection(id);
+
+        if (game.bonus) {
+          scoresEl.innerHTML = `<li class="empty">High scores arrive with the bonus game.</li>`;
+          return;
+        }
+
         scoresEl.innerHTML = `<li class="empty">Loading…</li>`;
         try {
           const scores = await loadTopScores(game.id, 5);
@@ -117,7 +210,19 @@
           .replace(/"/g, "&quot;");
       }
 
-      ensurePlayer(getPlayerName() || undefined).catch(() => {});
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          refreshUnlockStatus();
+        }
+      });
+
+      window.addEventListener("focus", () => {
+        refreshUnlockStatus();
+      });
+
+      ensurePlayer(getPlayerName() || undefined)
+        .then(() => refreshUnlockStatus())
+        .catch(() => applyUnlockUi());
       selectGame(selectedId);
     })();
   </script>

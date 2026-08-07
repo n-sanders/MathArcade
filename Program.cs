@@ -136,6 +136,36 @@ app.MapPost("/api/scores", async (ScoreRequest request, AppDbContext db) =>
     });
 });
 
+app.MapGet("/api/progress", async (string deviceToken, AppDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(deviceToken))
+    {
+        return Results.BadRequest(new { error = "deviceToken is required." });
+    }
+
+    var player = await db.Players.AsNoTracking()
+        .FirstOrDefaultAsync(p => p.DeviceToken == deviceToken);
+    if (player is null)
+    {
+        return Results.Ok(Array.Empty<object>());
+    }
+
+    var rows = await db.GameProgress
+        .AsNoTracking()
+        .Where(g => g.PlayerId == player.Id)
+        .Select(g => new
+        {
+            gameId = g.GameId,
+            difficultyLevel = g.DifficultyLevel,
+            statsJson = g.StatsJson,
+            updatedAt = g.UpdatedAt,
+            exists = true
+        })
+        .ToListAsync();
+
+    return Results.Ok(rows);
+});
+
 app.MapGet("/api/progress/{gameId}", async (string gameId, string deviceToken, AppDbContext db) =>
 {
     var player = await db.Players.FirstOrDefaultAsync(p => p.DeviceToken == deviceToken);

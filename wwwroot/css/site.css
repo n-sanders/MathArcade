@@ -206,6 +206,56 @@ input {
   color: var(--muted);
 }
 
+.activity-btn.bonus {
+  background: rgba(255, 209, 102, 0.18);
+  border-style: dashed;
+  border-color: rgba(255, 209, 102, 0.55);
+}
+
+.activity-btn.bonus.locked {
+  opacity: 0.72;
+}
+
+.activity-btn .lock-badge {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--coral-dark);
+}
+
+.bonus-status {
+  margin: 0;
+  max-width: 42ch;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 107, 74, 0.12);
+  color: var(--coral-dark);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.bonus-status.unlocked {
+  background: rgba(255, 209, 102, 0.28);
+  color: var(--bg-deep);
+}
+
+.launch.disabled {
+  background: var(--muted);
+  box-shadow: 0 8px 0 rgba(16, 42, 50, 0.35);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.launch.disabled:hover,
+.launch.disabled:active {
+  transform: none;
+  box-shadow: 0 8px 0 rgba(16, 42, 50, 0.35);
+}
+
 .preview-panel {
   padding: 1.75rem;
   display: flex;

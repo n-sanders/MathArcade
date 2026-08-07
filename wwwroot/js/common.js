@@ -52,8 +52,70 @@
       path: "/games/memorymatch.html",
       blurb: "Match math problems with their answers as the colorful card board grows.",
       howTo: "Flip two cards at a time and pair each expression with its answer. Every match earns points and a celebration. Clear each board to grow from 8 to 24 cards; misses simply flip back with no penalty."
+    },
+    {
+      id: "bonus",
+      title: "Daily Bonus",
+      path: "/games/bonus.html",
+      blurb: "A surprise reward for finishing today's math activities.",
+      howTo: "Complete a saved session in each activity today to unlock this bonus. Come back tomorrow and do it again!",
+      bonus: true
     }
   ];
+
+  /**
+   * How many non-bonus catalog games must have a saved session today to unlock the bonus.
+   * Set to null to require every catalog math game (default = all of them).
+   * Set to a number (e.g. 5) to lower the bar as the catalog grows.
+   */
+  const DAILY_BONUS_REQUIRED_COUNT = null;
+
+  function getCatalogGames() {
+    return GAMES.filter((g) => !g.bonus);
+  }
+
+  function getDailyBonusRequiredCount() {
+    const catalogSize = getCatalogGames().length;
+    if (DAILY_BONUS_REQUIRED_COUNT == null) return catalogSize;
+    return Math.max(1, Math.min(catalogSize, Math.floor(DAILY_BONUS_REQUIRED_COUNT)));
+  }
+
+  function localDateKey(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function isProgressFromLocalToday(updatedAt) {
+    if (!updatedAt) return false;
+    const when = new Date(updatedAt);
+    if (Number.isNaN(when.getTime())) return false;
+    return localDateKey(when) === localDateKey(new Date());
+  }
+
+  function getDailyBonusUnlockStatus(progressByGameId = {}) {
+    const catalog = getCatalogGames();
+    const required = getDailyBonusRequiredCount();
+    const completedIds = catalog
+      .filter((game) => {
+        const progress = progressByGameId[game.id];
+        if (!progress || !progress.exists) return false;
+        return isProgressFromLocalToday(progress.updatedAt);
+      })
+      .map((game) => game.id);
+
+    const completed = completedIds.length;
+    const remaining = Math.max(0, required - completed);
+    return {
+      unlocked: completed >= required,
+      completedIds,
+      completed,
+      remaining,
+      required,
+      catalogIds: catalog.map((g) => g.id)
+    };
+  }
 
   function uuid() {
     if (global.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -277,6 +339,24 @@
     return api(`/api/progress/${encodeURIComponent(gameId)}?deviceToken=${token}`);
   }
 
+  async function loadAllProgress() {
+    await ensurePlayer();
+    const token = encodeURIComponent(getOrCreateDeviceToken());
+    const rows = await api(`/api/progress?deviceToken=${token}`);
+    const byGameId = {};
+    (rows || []).forEach((row) => {
+      if (!row || !row.gameId) return;
+      byGameId[row.gameId] = {
+        gameId: row.gameId,
+        difficultyLevel: row.difficultyLevel,
+        statsJson: row.statsJson,
+        updatedAt: row.updatedAt,
+        exists: row.exists !== false
+      };
+    });
+    return byGameId;
+  }
+
   async function saveProgress(gameId, difficultyLevel, stats) {
     await ensurePlayer();
     return api(`/api/progress/${encodeURIComponent(gameId)}`, {
@@ -299,6 +379,11 @@
 
   global.MathArcade = {
     GAMES,
+    DAILY_BONUS_REQUIRED_COUNT,
+    getCatalogGames,
+    getDailyBonusRequiredCount,
+    isProgressFromLocalToday,
+    getDailyBonusUnlockStatus,
     getOrCreateDeviceToken,
     getPlayerName,
     setPlayerName,
@@ -306,6 +391,7 @@
     ensurePlayer,
     submitScore,
     loadProgress,
+    loadAllProgress,
     saveProgress,
     loadTopScores,
     formatScore
