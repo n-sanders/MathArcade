@@ -73,7 +73,7 @@
   let speedLines = [];
   let stars = [];
   let distSinceSpawn = 0;
-  let nextGap = 9999;
+  let nextGap = BASE_SPEED * 0.7;
 
   // canvas metrics
   let dpr = 1, cssW = 0, cssH = 0, scale = 1, LW = 800;
@@ -703,9 +703,9 @@
       dino.blinkT += dt;
       if (dino.blinkT > 3.4) dino.blinkT = 0;
 
-      // obstacles
+      // obstacles — brief lead-in, then keep the canyon busy
       distSinceSpawn += speed * dt;
-      if (elapsed > 2.2 && distSinceSpawn >= nextGap) spawnObstacle();
+      if (elapsed > 0.55 && distSinceSpawn >= nextGap) spawnObstacle();
 
       for (let i = obstacles.length - 1; i >= 0; i--) {
         const o = obstacles[i];
@@ -1165,7 +1165,7 @@
     particles = [];
     speedLines = [];
     distSinceSpawn = 0;
-    nextGap = 9999;
+    nextGap = BASE_SPEED * 0.7; // first cactus arrives ~0.7s after the lead-in
     deathT = 0;
     hitstopT = 0;
     dino.y = 0;
