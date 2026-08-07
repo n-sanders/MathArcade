@@ -57,8 +57,8 @@
       id: "bonus",
       title: "Daily Bonus",
       path: "/games/bonus.html",
-      blurb: "A surprise reward for finishing today's math activities.",
-      howTo: "Complete a saved session in each activity today to unlock this bonus. Come back tomorrow and do it again!",
+      blurb: "Desert Dash — jump cacti, duck flyers, and survive as the sand speeds up!",
+      howTo: "Unlock by finishing a saved session in each activity today. Then jump (Space / ↑ / tap) over cacti and duck (↓ / hold) under flyers. Score is how long you last — the longer you run, the faster it gets!",
       bonus: true
     }
   ];

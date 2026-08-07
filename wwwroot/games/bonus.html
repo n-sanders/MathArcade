@@ -2,27 +2,484 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Daily Bonus — MathArcade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Daily Bonus · MathArcade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/site.css" />
+  <style>
+    :root {
+      --bn-bg: #1a1410;
+      --bn-sky-top: #2a1f28;
+      --bn-sky-mid: #3d2a24;
+      --bn-sky-bot: #5c4334;
+      --bn-sand: #c4a574;
+      --bn-sand-dark: #8a6b45;
+      --bn-teal: #2ec4b6;
+      --bn-teal-bright: #7ef0e4;
+      --bn-coral: #ff6b5a;
+      --bn-text: #f5ebe0;
+      --bn-dim: #b8a090;
+      --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+      --font-body: "Nunito", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bn-bg);
+      color: var(--bn-text);
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .bn-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.55rem 1rem;
+      background: rgba(26, 20, 16, 0.95);
+      border-bottom: 1px solid rgba(196, 165, 116, 0.28);
+      z-index: 100;
+      position: relative;
+    }
+
+    .bn-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.85rem;
+      min-width: 0;
+    }
+
+    .back-link {
+      color: var(--bn-dim);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover { color: var(--bn-teal-bright); }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.15rem, 3vw, 1.55rem);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: linear-gradient(90deg, #ffffff, var(--bn-sand), var(--bn-coral));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      white-space: nowrap;
+    }
+
+    .hud {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+    }
+
+    .hud-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(92, 67, 52, 0.55);
+      border: 1px solid rgba(196, 165, 116, 0.35);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--bn-dim);
+      white-space: nowrap;
+    }
+
+    .hud-chip .val {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--bn-teal-bright);
+      font-variant-numeric: tabular-nums;
+      min-width: 2.2ch;
+    }
+
+    .bn-stage-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 70% 15%, rgba(255, 107, 90, 0.18), transparent 45%),
+        radial-gradient(ellipse at 20% 40%, rgba(46, 196, 182, 0.1), transparent 50%),
+        linear-gradient(180deg, var(--bn-sky-top) 0%, var(--bn-sky-mid) 42%, var(--bn-sky-bot) 72%, #4a3528 100%);
+    }
+
+    #stage.shake { animation: bnShake 0.4s ease; }
+    #stage.shake-big { animation: bnShakeBig 0.7s ease; }
+    #stage.urgent::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: linear-gradient(90deg, transparent 60%, rgba(255, 107, 90, 0.08));
+      animation: speedPulse 0.6s ease-in-out infinite;
+    }
+
+    @keyframes bnShake {
+      12% { transform: translate(-6px, 3px); }
+      28% { transform: translate(5px, -4px); }
+      44% { transform: translate(-4px, -2px); }
+      60% { transform: translate(4px, 3px); }
+      76% { transform: translate(-2px, 1px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @keyframes bnShakeBig {
+      8%  { transform: translate(-12px, 7px) rotate(-0.5deg); }
+      22% { transform: translate(11px, -9px) rotate(0.4deg); }
+      38% { transform: translate(-9px, -6px); }
+      54% { transform: translate(8px, 7px); }
+      70% { transform: translate(-5px, 3px); }
+      86% { transform: translate(3px, -2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @keyframes speedPulse {
+      50% { opacity: 0.55; }
+    }
+
+    #world-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      display: block;
+      overflow: hidden;
+    }
+
+    #fx-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 30;
+      overflow: hidden;
+    }
+
+    .spark {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin: -3px 0 0 -3px;
+      pointer-events: none;
+      animation: sparkFly 0.7s ease-out forwards;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    @keyframes sparkFly {
+      0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+    }
+
+    .float-text {
+      position: absolute;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--bn-teal-bright);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      animation: floatUp 0.95s ease-out forwards;
+      white-space: nowrap;
+      transform: translate(-50%, -50%);
+    }
+
+    .float-text.milestone { color: #ffe08a; font-size: 1.35rem; }
+    .float-text.bad { color: var(--bn-coral); font-size: 1.4rem; }
+
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.7); }
+      30%  { transform: translate(-50%, -80%) scale(1.1); }
+      100% { opacity: 0; transform: translate(-50%, -140%) scale(1); }
+    }
+
+    .screen-flash {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 40;
+      opacity: 0;
+      background: #fff;
+    }
+
+    .screen-flash.go {
+      animation: flashPop 0.35s ease-out;
+    }
+
+    .screen-flash.go.bad {
+      background: var(--bn-coral);
+      animation: flashPop 0.45s ease-out;
+    }
+
+    @keyframes flashPop {
+      0%   { opacity: 0.65; }
+      100% { opacity: 0; }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      background: rgba(18, 12, 10, 0.62);
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay.hidden { display: none; }
+
+    .overlay-card {
+      width: min(420px, 100%);
+      padding: 1.5rem 1.35rem 1.35rem;
+      border-radius: 20px;
+      background:
+        radial-gradient(ellipse at 80% 0%, rgba(255, 107, 90, 0.18), transparent 50%),
+        linear-gradient(180deg, #3a2a24 0%, #241a16 100%);
+      border: 1px solid rgba(196, 165, 116, 0.4);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+
+    .overlay-card h2 {
+      margin: 0 0 0.55rem;
+      font-family: var(--font-display);
+      font-size: clamp(1.45rem, 4vw, 1.85rem);
+      background: linear-gradient(90deg, #fff, var(--bn-sand), var(--bn-coral));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .overlay-card p {
+      margin: 0 0 1rem;
+      color: var(--bn-dim);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .overlay-stats {
+      margin: 0 0 1rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--bn-teal-bright);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.75rem 1.4rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--bn-teal-bright), var(--bn-teal));
+      color: #0a2e2a;
+      box-shadow: 0 4px 0 #1a6b62, 0 0 20px rgba(46, 196, 182, 0.35);
+    }
+
+    .btn-ghost {
+      display: block;
+      width: 100%;
+      margin-top: 0.65rem;
+      background: transparent;
+      color: var(--bn-dim);
+      border: 1px solid rgba(184, 160, 144, 0.35);
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .controls-hint {
+      margin-top: 0.85rem;
+      font-size: 0.78rem;
+      color: rgba(184, 160, 144, 0.85);
+      line-height: 1.4;
+    }
+
+    @media (max-width: 420px) {
+      .game-title { font-size: 1.05rem; }
+      .hud-chip { padding: 0.3rem 0.55rem; font-size: 0.75rem; }
+    }
+  </style>
 </head>
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark">MathArcade</div>
-        <div class="brand-tag">Daily Bonus</div>
-      </div>
-      <a class="launch" href="/">Back to activities</a>
-    </header>
-    <section class="preview-panel">
-      <p class="preview-kicker">Coming soon</p>
-      <h1>Daily Bonus</h1>
-      <p>You unlocked today’s reward slot. The bonus game itself will land here next.</p>
-    </section>
+  <div class="bn-topbar">
+    <div class="bn-left">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">Daily Bonus</h1>
+    </div>
+    <div class="hud">
+      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip">Best <span class="val" id="best">0</span></div>
+    </div>
   </div>
+
+  <div class="bn-stage-wrap">
+    <div id="stage">
+      <svg id="world-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="dune-far" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6b4a3a" stop-opacity="0.55" />
+            <stop offset="100%" stop-color="#4a3228" stop-opacity="0.9" />
+          </linearGradient>
+          <linearGradient id="dune-near" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8a6550" />
+            <stop offset="100%" stop-color="#5c4334" />
+          </linearGradient>
+          <linearGradient id="ground-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#c4a574" />
+            <stop offset="35%" stop-color="#a88958" />
+            <stop offset="100%" stop-color="#6b5238" />
+          </linearGradient>
+        </defs>
+
+        <!-- Parallax dunes (scrolled via transform) -->
+        <g id="dunes-far" opacity="0.7">
+          <path d="M0 340 Q80 280 160 320 T320 300 T480 330 T640 290 T800 320 T960 300 L960 500 L0 500 Z" fill="url(#dune-far)" />
+          <path d="M960 340 Q1040 280 1120 320 T1280 300 T1440 330 T1600 290 T1760 320 T1920 300 L1920 500 L960 500 Z" fill="url(#dune-far)" />
+        </g>
+        <g id="dunes-near" opacity="0.9">
+          <path d="M0 380 Q100 330 200 370 T400 350 T600 380 T800 340 T1000 370 L1000 500 L0 500 Z" fill="url(#dune-near)" />
+          <path d="M1000 380 Q1100 330 1200 370 T1400 350 T1600 380 T1800 340 T2000 370 L2000 500 L1000 500 Z" fill="url(#dune-near)" />
+        </g>
+
+        <!-- Clouds -->
+        <g id="clouds" fill="#f5ebe0" opacity="0.22">
+          <ellipse cx="120" cy="70" rx="48" ry="16" />
+          <ellipse cx="150" cy="64" rx="28" ry="12" />
+          <ellipse cx="95" cy="66" rx="22" ry="10" />
+          <ellipse cx="420" cy="95" rx="55" ry="14" />
+          <ellipse cx="455" cy="88" rx="30" ry="11" />
+          <ellipse cx="390" cy="92" rx="24" ry="9" />
+          <ellipse cx="720" cy="55" rx="42" ry="13" />
+          <ellipse cx="748" cy="50" rx="26" ry="10" />
+          <ellipse cx="700" cy="52" rx="20" ry="8" />
+        </g>
+
+        <!-- Ground strip + dashed tread -->
+        <g id="ground">
+          <rect id="ground-rect" x="0" y="420" width="900" height="80" fill="url(#ground-fill)" />
+          <line id="ground-line" x1="0" y1="420" x2="900" y2="420" stroke="#e8d4b0" stroke-width="3" />
+          <g id="ground-dashes" stroke="#8a6b45" stroke-width="3" stroke-linecap="round" stroke-dasharray="18 28">
+            <line x1="-200" y1="448" x2="1100" y2="448" />
+          </g>
+        </g>
+
+        <!-- Obstacles container -->
+        <g id="obstacles"></g>
+
+        <!-- Runner -->
+        <g id="player" transform="translate(140, 356)">
+          <!-- run (default) -->
+          <g id="pose-run">
+            <ellipse cx="28" cy="62" rx="18" ry="5" fill="rgba(0,0,0,0.28)" />
+            <ellipse cx="30" cy="34" rx="18" ry="22" fill="#2ec4b6" />
+            <circle cx="38" cy="18" r="14" fill="#ffd4a8" />
+            <circle cx="42" cy="16" r="2.4" fill="#2a1210" />
+            <path d="M34 22 Q40 25 46 21" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M26 8 Q38 0 50 10" stroke="#ff6b5a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M14 30 Q4 38 8 48" stroke="#2ec4b6" stroke-width="6" stroke-linecap="round" fill="none" />
+            <g id="leg-a">
+              <path d="M22 50 L14 64" stroke="#1d2c3f" stroke-width="6" stroke-linecap="round" />
+            </g>
+            <g id="leg-b">
+              <path d="M36 50 L46 64" stroke="#1d2c3f" stroke-width="6" stroke-linecap="round" />
+            </g>
+          </g>
+          <!-- jump -->
+          <g id="pose-jump" display="none">
+            <ellipse cx="28" cy="66" rx="12" ry="3" fill="rgba(0,0,0,0.18)" />
+            <ellipse cx="30" cy="30" rx="18" ry="20" fill="#2ec4b6" />
+            <circle cx="38" cy="14" r="14" fill="#ffd4a8" />
+            <circle cx="42" cy="12" r="2.4" fill="#2a1210" />
+            <path d="M34 18 Q40 21 46 17" stroke="#2a1210" stroke-width="1.6" fill="none" stroke-linecap="round" />
+            <path d="M26 4 Q38 -4 50 6" stroke="#ff6b5a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M12 24 Q0 16 4 6" stroke="#2ec4b6" stroke-width="6" stroke-linecap="round" fill="none" />
+            <path d="M22 46 L16 58" stroke="#1d2c3f" stroke-width="6" stroke-linecap="round" />
+            <path d="M38 46 L50 52" stroke="#1d2c3f" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <!-- duck -->
+          <g id="pose-duck" display="none">
+            <ellipse cx="30" cy="62" rx="22" ry="5" fill="rgba(0,0,0,0.28)" />
+            <ellipse cx="34" cy="48" rx="26" ry="14" fill="#2ec4b6" />
+            <circle cx="52" cy="42" r="12" fill="#ffd4a8" />
+            <circle cx="56" cy="40" r="2.2" fill="#2a1210" />
+            <path d="M48 46 Q54 48 58 45" stroke="#2a1210" stroke-width="1.5" fill="none" stroke-linecap="round" />
+            <path d="M42 32 Q52 26 62 34" stroke="#ff6b5a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M12 48 Q2 52 6 58" stroke="#2ec4b6" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M24 56 L18 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+            <path d="M40 56 L48 64" stroke="#1d2c3f" stroke-width="5" stroke-linecap="round" />
+          </g>
+          <!-- crash -->
+          <g id="pose-crash" display="none">
+            <ellipse cx="28" cy="62" rx="18" ry="5" fill="rgba(0,0,0,0.28)" />
+            <ellipse cx="30" cy="38" rx="20" ry="18" fill="#2ec4b6" transform="rotate(-18 30 38)" />
+            <circle cx="36" cy="22" r="14" fill="#ffd4a8" />
+            <circle cx="32" cy="20" r="2.4" fill="#2a1210" />
+            <circle cx="42" cy="22" r="2.4" fill="#2a1210" />
+            <path d="M32 28 Q38 26 44 30" stroke="#2a1210" stroke-width="1.8" fill="none" stroke-linecap="round" />
+            <path d="M22 12 Q34 2 48 14" stroke="#ff6b5a" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M10 34 Q0 28 6 18" stroke="#2ec4b6" stroke-width="6" stroke-linecap="round" fill="none" />
+            <path d="M20 52 L10 58" stroke="#1d2c3f" stroke-width="6" stroke-linecap="round" />
+            <path d="M40 52 L52 60" stroke="#1d2c3f" stroke-width="6" stroke-linecap="round" />
+            <text x="50" y="10" font-size="18" fill="#ff6b5a" font-family="Fredoka, sans-serif">!</text>
+          </g>
+        </g>
+      </svg>
+
+      <div id="fx-layer"></div>
+      <div class="screen-flash" id="flash"></div>
+
+      <div class="overlay" id="overlay">
+        <div class="overlay-card" id="overlay-card">
+          <h2>Desert Dash</h2>
+          <p>Jump over cacti and duck under flyers. The desert gets faster the longer you survive — your score is how long you last!</p>
+          <button class="btn btn-primary" type="button" id="start-btn">Play</button>
+          <p class="controls-hint">Space / ↑ / tap = jump · ↓ / hold = duck</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/bonus.js"></script>
 </body>
 </html>

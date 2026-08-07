@@ -182,11 +182,6 @@
         });
         updatePreviewForSelection(id);
 
-        if (game.bonus) {
-          scoresEl.innerHTML = `<li class="empty">High scores arrive with the bonus game.</li>`;
-          return;
-        }
-
         scoresEl.innerHTML = `<li class="empty">Loading…</li>`;
         try {
           const scores = await loadTopScores(game.id, 5);
