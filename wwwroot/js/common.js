@@ -106,11 +106,14 @@
       .map((game) => game.id);
 
     const completed = completedIds.length;
+    const remainingGames = catalog.filter((game) => !completedIds.includes(game.id));
     const remaining = Math.max(0, required - completed);
     return {
       unlocked: completed >= required,
       completedIds,
       completed,
+      remainingIds: remainingGames.map((g) => g.id),
+      remainingTitles: remainingGames.map((g) => g.title),
       remaining,
       required,
       catalogIds: catalog.map((g) => g.id)
@@ -373,6 +376,13 @@
     return api(`/api/scores/${encodeURIComponent(gameId)}?limit=${limit}`);
   }
 
+  function formatActivityList(titles) {
+    if (!titles || !titles.length) return "";
+    if (titles.length === 1) return titles[0];
+    if (titles.length === 2) return `${titles[0]} and ${titles[1]}`;
+    return `${titles.slice(0, -1).join(", ")}, and ${titles[titles.length - 1]}`;
+  }
+
   function formatScore(n) {
     return Number(n || 0).toLocaleString();
   }
@@ -384,6 +394,7 @@
     getDailyBonusRequiredCount,
     isProgressFromLocalToday,
     getDailyBonusUnlockStatus,
+    formatActivityList,
     getOrCreateDeviceToken,
     getPlayerName,
     setPlayerName,

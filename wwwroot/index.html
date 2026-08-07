@@ -56,6 +56,7 @@
         loadTopScores,
         loadAllProgress,
         getDailyBonusUnlockStatus,
+        formatActivityList,
         formatScore
       } = MathArcade;
 
@@ -105,10 +106,16 @@
         if (status.unlocked) {
           return `Unlocked for today — ${status.completed} of ${status.required} activities done.`;
         }
+        const stillNeed = formatActivityList(status.remainingTitles);
         if (status.required === status.catalogIds.length) {
-          return `Finish all ${status.required} activities today to unlock (${status.completed} of ${status.required} done).`;
+          return stillNeed
+            ? `Still need to finish: ${stillNeed}.`
+            : `Finish all activities today to unlock.`;
         }
-        return `Finish ${status.required} activities today to unlock (${status.completed} of ${status.required} done).`;
+        const more = status.remaining;
+        return stillNeed
+          ? `Finish ${more} more today to unlock. Not done yet: ${stillNeed}.`
+          : `Finish ${more} more activities today to unlock.`;
       }
 
       function applyUnlockUi() {

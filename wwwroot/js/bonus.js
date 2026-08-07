@@ -1224,10 +1224,14 @@
   }
 
   function showLockedCard(status) {
+    const stillNeed = MathArcade.formatActivityList(status.remainingTitles);
+    const remainingLine = stillNeed
+      ? ` Still need: <strong>${stillNeed}</strong>.`
+      : "";
     overlayCard.innerHTML = `
       <h2>Still locked!</h2>
       <p>The Daily Bonus opens after you finish today's math activities.
-         You've done <strong>${status.completed} of ${status.required}</strong> so far.</p>
+         You've done <strong>${status.completed} of ${status.required}</strong> so far.${remainingLine}</p>
       <a class="btn btn-primary" href="/">Back to activities</a>`;
   }
 
