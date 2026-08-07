@@ -14,7 +14,9 @@
   const JUMP_V = 880;              // initial jump velocity (upward)
   const FAST_FALL_MULT = 2.3;      // extra gravity while holding duck mid-air
   const BASE_SPEED = 340;          // logical px/s at the start of a run
-  const MAX_SPEED = 960;
+  // Soft ceiling for audio/difficulty scaling only — run speed itself is uncapped
+  // so the canyon keeps accelerating until the player eventually loses.
+  const SPEED_FEEL_AT = 960;
   const ACCEL = 9.5;               // speed gained per second of survival
   const SCORE_RATE = 10;           // score points per second survived
   const BIRDS_AFTER = 12;          // seconds before birds start appearing
@@ -98,12 +100,17 @@
   ];
   const ARP = [0, 2, 1, 3, 2, 3, 1, 2];
 
+  // Uncapped 0→∞ relative to SPEED_FEEL_AT; speedNorm clamps to 1 for gameplay feel.
+  function speedRatio() {
+    return Math.max(0, (speed - BASE_SPEED) / (SPEED_FEEL_AT - BASE_SPEED));
+  }
+
   function speedNorm() {
-    return Math.min(1, Math.max(0, (speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED)));
+    return Math.min(1, speedRatio());
   }
 
   function currentBpm() {
-    return 118 + speedNorm() * 46;
+    return 118 + speedRatio() * 46;
   }
 
   function stepDur() {
@@ -168,7 +175,7 @@
     const bar = Math.floor(stepIdx / 16) % 4;
     const pos = stepIdx % 16;
     const chord = CHORDS[bar];
-    const drive = speedNorm();
+    const drive = speedRatio();
 
     // bass on the quarters
     if (pos % 4 === 0) {
@@ -658,7 +665,7 @@
 
     if (state === "running") {
       elapsed += dt;
-      speed = Math.min(MAX_SPEED, BASE_SPEED + elapsed * ACCEL);
+      speed = BASE_SPEED + elapsed * ACCEL;
       score = Math.floor(elapsed * SCORE_RATE);
 
       // milestone fanfare every 100 points, bigger shout every 500
