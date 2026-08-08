@@ -6,6 +6,7 @@
 
   const GAME_ID = "make10";
   const BEST_KEY = "matharcade_make10_best";
+  const TARGET_CORRECT = 10;
 
   // ---------------------------------------------------------------- DOM ----
   const canvas = document.getElementById("game-canvas");
@@ -16,8 +17,10 @@
   const overlayText = overlay.querySelector("p");
   const overlayStats = document.getElementById("overlay-stats");
   const startBtn = document.getElementById("start-btn");
+  const homeBtn = document.getElementById("home-btn");
   const endBtn = document.getElementById("end-btn");
   const scoreEl = document.getElementById("score");
+  const circuitEl = document.getElementById("circuit");
   const streakEl = document.getElementById("streak");
   const bestEl = document.getElementById("best");
   const streakChip = document.getElementById("streak-chip");
@@ -46,6 +49,7 @@
   let roundsPlayed = 0;
   let correctCount = 0;
   let lastBase = -1;
+  let baseQueue = []; // session bases; empty = idle attract (random)
 
   let baseNode = null;   // { value, x, y, r, popT }
   let nodes = [];        // scattered choice nodes
@@ -66,6 +70,9 @@
 
   let lastSubmittedScore = 0;
   let scoreSubmitTimer = null;
+  let pendingProgressStats = null; // set while end-of-session save is in flight
+  let progressSaved = false;
+  let sessionPersistPromise = null;
 
   function scoreToReport() {
     if (score <= 0) return 0;
@@ -102,8 +109,58 @@
     }
   }
 
-  function flushScoreReportOnPageHide() {
+  function sessionStatsPayload() {
+    return {
+      correctCount,
+      lastScore: score,
+      bestScore: best
+    };
+  }
+
+  async function persistSessionProgress(options = {}) {
+    const stats = pendingProgressStats || sessionStatsPayload();
+    pendingProgressStats = stats;
+    try {
+      await MathArcade.saveProgress(GAME_ID, 1, stats, options);
+      progressSaved = true;
+      pendingProgressStats = null;
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  }
+
+  function persistSession() {
+    if (sessionPersistPromise) return sessionPersistPromise;
+    sessionPersistPromise = (async () => {
+      if (scoreSubmitTimer) {
+        clearTimeout(scoreSubmitTimer);
+        scoreSubmitTimer = null;
+      }
+      // Progress unlocks the daily bonus — save it before score sync.
+      if (!progressSaved) {
+        await persistSessionProgress();
+      }
+      await flushScoreReport();
+    })().finally(() => {
+      sessionPersistPromise = null;
+    });
+    return sessionPersistPromise;
+  }
+
+  function flushSessionOnPageHide() {
     stopMusic();
+    const needsProgress = !!pendingProgressStats || (mode === "over" && !progressSaved);
+    if (needsProgress) {
+      const stats = pendingProgressStats || sessionStatsPayload();
+      pendingProgressStats = stats;
+      MathArcade.saveProgress(GAME_ID, 1, stats, { keepalive: true })
+        .then(() => {
+          progressSaved = true;
+          pendingProgressStats = null;
+        })
+        .catch((err) => console.error(err));
+    }
     if (score <= 0) return;
     const value = scoreToReport();
     if (value <= 0 || value <= lastSubmittedScore) return;
@@ -507,11 +564,44 @@
     return clamp(Math.min(W, H) * 0.055, 26, 52);
   }
 
-  function newRound() {
-    roundsPlayed += 1;
+  function shuffleInPlace(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randInt(0, i);
+      const tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function buildBaseQueue() {
+    const first = shuffleInPlace([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    const second = shuffleInPlace([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let extra = second[0];
+    for (let i = 0; i < second.length; i++) {
+      if (second[i] !== first[first.length - 1]) {
+        extra = second[i];
+        break;
+      }
+    }
+    baseQueue = first.concat(extra);
+  }
+
+  function nextBase() {
+    if (baseQueue.length) {
+      const base = baseQueue.shift();
+      lastBase = base;
+      return base;
+    }
     let base;
     do { base = randInt(1, 9); } while (base === lastBase);
     lastBase = base;
+    return base;
+  }
+
+  function newRound() {
+    roundsPlayed += 1;
+    const base = nextBase();
     const answer = 10 - base;
 
     const values = [answer];
@@ -649,6 +739,9 @@
 
   function updateHud() {
     scoreEl.textContent = score;
+    circuitEl.textContent = mode === "idle" || mode === "over"
+      ? "–"
+      : `${correctCount}/${TARGET_CORRECT}`;
     streakEl.textContent = streak;
     bestEl.textContent = best;
     streakChip.classList.toggle("hot", streak >= 3);
@@ -660,6 +753,13 @@
     streak = 0;
     correctCount = 0;
     roundsPlayed = 0;
+    lastBase = -1;
+    pendingProgressStats = null;
+    progressSaved = false;
+    sessionPersistPromise = null;
+    buildBaseQueue();
+    homeBtn.classList.add("hidden");
+    homeBtn.setAttribute("aria-disabled", "true");
     overlay.classList.add("hidden");
     newRound();
     mode = "playing";
@@ -683,28 +783,45 @@
     if (mode === "idle" || mode === "over") return;
     stopMusic();
     mode = "over";
-    overlayTitle.textContent = "Circuit closed!";
-    overlayText.textContent = streak >= 5
-      ? "You were on fire. The grid thanks you."
+    const finishedAll = correctCount >= TARGET_CORRECT;
+    overlayTitle.textContent = finishedAll ? "All circuits lit!" : "Circuit closed!";
+    overlayText.textContent = finishedAll
+      ? (streak >= 5
+        ? "You were on fire. The grid thanks you."
+        : "Ten perfect connections. Plug back in?")
       : "Every connection makes you faster. Plug back in?";
     overlayStats.hidden = false;
-    overlayStats.textContent = `Score ${score} · Best ${best} · ${correctCount} circuits completed`;
+    overlayStats.textContent = `Score ${score} · Best ${best} · ${correctCount}/${TARGET_CORRECT} circuits`;
     startBtn.textContent = "Play again";
+    // Mark progress pending before any await so pagehide/navigation can still save it.
+    pendingProgressStats = sessionStatsPayload();
+    progressSaved = false;
+    homeBtn.classList.remove("hidden");
+    homeBtn.setAttribute("aria-disabled", "true");
     overlay.classList.remove("hidden");
+    updateHud();
     try {
-      if (scoreSubmitTimer) {
-        clearTimeout(scoreSubmitTimer);
-        scoreSubmitTimer = null;
-      }
-      await flushScoreReport();
-      await MathArcade.saveProgress(GAME_ID, 1, { correctCount, lastScore: score, bestScore: best });
+      await persistSession();
     } catch (err) {
       console.error(err);
+    } finally {
+      homeBtn.setAttribute("aria-disabled", "false");
     }
   }
 
   startBtn.addEventListener("click", startGame);
   endBtn.addEventListener("click", endGame);
+  homeBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (homeBtn.getAttribute("aria-disabled") === "true") return;
+    homeBtn.setAttribute("aria-disabled", "true");
+    try {
+      await persistSession();
+    } catch (err) {
+      console.error(err);
+    }
+    window.location.href = "/";
+  });
 
   // -------------------------------------------------------------- wire -----
   function wireAnchor() {
@@ -1012,9 +1129,13 @@
     }
 
     if (mode === "celebrate" && modeT >= 0.95) {
-      newRound();
-      mode = "playing";
-      modeT = 0;
+      if (correctCount >= TARGET_CORRECT) {
+        endGame();
+      } else {
+        newRound();
+        mode = "playing";
+        modeT = 0;
+      }
     }
     if (mode === "fail" && modeT >= 0.6) {
       mode = "playing";
@@ -1071,7 +1192,7 @@
   pointer.y = H * 0.45;
   tip.x = baseNode.x;
   tip.y = baseNode.y;
-  window.addEventListener("pagehide", flushScoreReportOnPageHide);
+  window.addEventListener("pagehide", flushSessionOnPageHide);
 
   (async () => {
     try {

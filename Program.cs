@@ -159,17 +159,17 @@ app.MapGet("/api/progress", async (string deviceToken, AppDbContext db) =>
     var rows = await db.GameProgress
         .AsNoTracking()
         .Where(g => g.PlayerId == player.Id)
-        .Select(g => new
-        {
-            gameId = g.GameId,
-            difficultyLevel = g.DifficultyLevel,
-            statsJson = g.StatsJson,
-            updatedAt = g.UpdatedAt,
-            exists = true
-        })
         .ToListAsync();
 
-    return Results.Ok(rows);
+    return Results.Ok(rows.Select(g => new
+    {
+        gameId = g.GameId,
+        difficultyLevel = g.DifficultyLevel,
+        statsJson = g.StatsJson,
+        // SQLite returns Unspecified Kind; these values are always written as UTC.
+        updatedAt = DateTime.SpecifyKind(g.UpdatedAt, DateTimeKind.Utc),
+        exists = true
+    }));
 });
 
 app.MapGet("/api/progress/{gameId}", async (string gameId, string deviceToken, AppDbContext db) =>
@@ -186,15 +186,16 @@ app.MapGet("/api/progress/{gameId}", async (string gameId, string deviceToken, A
         });
     }
 
+    var normalizedGameId = gameId.Trim().ToLowerInvariant();
     var progress = await db.GameProgress
         .AsNoTracking()
-        .FirstOrDefaultAsync(g => g.PlayerId == player.Id && g.GameId == gameId);
+        .FirstOrDefaultAsync(g => g.PlayerId == player.Id && g.GameId == normalizedGameId);
 
     if (progress is null)
     {
         return Results.Ok(new
         {
-            gameId,
+            gameId = normalizedGameId,
             difficultyLevel = 1,
             statsJson = "{}",
             exists = false
@@ -203,10 +204,10 @@ app.MapGet("/api/progress/{gameId}", async (string gameId, string deviceToken, A
 
     return Results.Ok(new
     {
-        progress.GameId,
-        progress.DifficultyLevel,
-        progress.StatsJson,
-        progress.UpdatedAt,
+        gameId = progress.GameId,
+        difficultyLevel = progress.DifficultyLevel,
+        statsJson = progress.StatsJson,
+        updatedAt = DateTime.SpecifyKind(progress.UpdatedAt, DateTimeKind.Utc),
         exists = true
     });
 });
@@ -254,10 +255,10 @@ app.MapPut("/api/progress/{gameId}", async (string gameId, ProgressRequest reque
 
     return Results.Ok(new
     {
-        progress.GameId,
-        progress.DifficultyLevel,
-        progress.StatsJson,
-        progress.UpdatedAt
+        gameId = progress.GameId,
+        difficultyLevel = progress.DifficultyLevel,
+        statsJson = progress.StatsJson,
+        updatedAt = DateTime.SpecifyKind(progress.UpdatedAt, DateTimeKind.Utc)
     });
 });
 

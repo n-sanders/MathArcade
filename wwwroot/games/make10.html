@@ -198,6 +198,31 @@
       border-color: rgba(34, 211, 238, 0.5);
       box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
     }
+
+    .overlay-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .overlay-actions a.btn {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .overlay-actions a.btn.hidden,
+    .overlay-actions .btn.hidden {
+      display: none;
+    }
+
+    .overlay-actions a.btn[aria-disabled="true"] {
+      opacity: 0.55;
+      pointer-events: none;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -208,6 +233,7 @@
     </div>
     <div class="hud">
       <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip">Circuit <span class="val" id="circuit">–</span></div>
       <div class="hud-chip" id="streak-chip">Streak <span class="val" id="streak">0</span></div>
       <div class="hud-chip">Best <span class="val" id="best">0</span></div>
       <button class="btn btn-ghost" id="end-btn">End</button>
@@ -217,9 +243,12 @@
     <canvas id="game-canvas"></canvas>
     <div class="overlay" id="overlay">
       <h2>MAKE 10</h2>
-      <p>A live wire hums on the left. Guide its free end to the number that adds with the base to make <strong>10</strong>, and complete the circuit.</p>
+      <p>A live wire hums on the left. Guide its free end to the number that adds with the base to make <strong>10</strong>. Complete <strong>10 circuits</strong> to finish the run.</p>
       <p id="overlay-stats" class="stat-line" hidden></p>
-      <button class="btn" id="start-btn">Power up</button>
+      <div class="overlay-actions">
+        <button class="btn" id="start-btn">Power up</button>
+        <a class="btn btn-ghost hidden" id="home-btn" href="/">Back to arcade</a>
+      </div>
     </div>
   </div>
   <script src="/js/common.js"></script>

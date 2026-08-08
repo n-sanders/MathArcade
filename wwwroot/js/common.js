@@ -9,7 +9,7 @@
       title: "Make 10",
       path: "/games/make10.html",
       blurb: "Drag a live electric wire to the number that completes 10!",
-      howTo: "A glowing wire is anchored to the base number. Guide its free end to the number that adds with the base to make 10, then click or release to connect. Correct circuits spark and boost your streak; wrong ones fizzle."
+      howTo: "A glowing wire is anchored to the base number. Guide its free end to the number that adds with the base to make 10, then click or release to connect. Correct circuits spark and boost your streak; wrong ones fizzle. Complete 10 circuits to finish the run."
     },
     {
       id: "maze",
@@ -87,10 +87,29 @@
     return `${y}-${m}-${d}`;
   }
 
+  /**
+   * Server stores UpdatedAt as UTC. SQLite often round-trips DateTime as
+   * Unspecified, so JSON may omit the "Z". Treat timezone-less stamps as UTC
+   * so evening local play still counts as "today".
+   */
+  function parseServerTimestamp(updatedAt) {
+    if (updatedAt == null || updatedAt === "") return null;
+    if (updatedAt instanceof Date) {
+      return Number.isNaN(updatedAt.getTime()) ? null : updatedAt;
+    }
+    const raw = String(updatedAt).trim();
+    if (!raw) return null;
+    const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+    const normalized = hasZone
+      ? raw
+      : `${raw.replace(" ", "T")}Z`;
+    const when = new Date(normalized);
+    return Number.isNaN(when.getTime()) ? null : when;
+  }
+
   function isProgressFromLocalToday(updatedAt) {
-    if (!updatedAt) return false;
-    const when = new Date(updatedAt);
-    if (Number.isNaN(when.getTime())) return false;
+    const when = parseServerTimestamp(updatedAt);
+    if (!when) return false;
     return localDateKey(when) === localDateKey(new Date());
   }
 
@@ -360,10 +379,15 @@
     return byGameId;
   }
 
-  async function saveProgress(gameId, difficultyLevel, stats) {
-    await ensurePlayer();
+  async function saveProgress(gameId, difficultyLevel, stats, options = {}) {
+    if (!options.keepalive) {
+      await ensurePlayer();
+    } else if (!getPlayerName()) {
+      return null;
+    }
     return api(`/api/progress/${encodeURIComponent(gameId)}`, {
       method: "PUT",
+      keepalive: options.keepalive === true,
       body: JSON.stringify({
         deviceToken: getOrCreateDeviceToken(),
         difficultyLevel,
