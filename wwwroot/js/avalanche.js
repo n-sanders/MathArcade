@@ -1035,14 +1035,15 @@
   }
 
   // keyboard: 1/2/3 picks the left/middle/right platform of the armed row
+  // (slots stay fixed even after a wrong answer is removed)
   window.addEventListener("keydown", (e) => {
     if (!playing || jumping) return;
     const k = e.key;
     if (k !== "1" && k !== "2" && k !== "3") return;
     const row = rows[step + 1];
     if (!row) return;
-    const alive = row.plats.filter((p) => !p.dead).sort((a, b) => a.x - b.x);
-    const plat = alive[Number(k) - 1];
+    const ordered = row.plats.slice().sort((a, b) => a.x - b.x);
+    const plat = ordered[Number(k) - 1];
     if (plat) onPlatformTap(step + 1, plat);
   });
 
