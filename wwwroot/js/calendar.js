@@ -1,6 +1,6 @@
 /* Calendar Scramble — drag the scattered months back into the ordinal stack.
- * Stages of 4/6/8/10/12 missing months, two rounds each. Faster placements
- * earn more points; wrong slots cost 5 and bounce the month back.
+ * C/B/A/S ranks: short 3-round runs with more months missing at higher ranks.
+ * A falling curtain drains the field; clear all three rounds to rank up.
  */
 (function () {
   "use strict";
@@ -22,9 +22,23 @@
     "#7dd3fc"                          // Dec      winter
   ];
 
-  const STAGES = [4, 6, 8, 10, 12];   // missing months per stage
-  const ROUNDS_PER_STAGE = 2;
-  const TOTAL_ROUNDS = STAGES.length * ROUNDS_PER_STAGE; // 10
+  const RANKS = ["C", "B", "A", "S"];
+  const ROUNDS_PER_RUN = 3;
+  const MISSING_BY_RANK = {
+    C: [3, 4, 5],
+    B: [5, 6, 8],
+    A: [8, 10, 11],
+    S: [12, 12, 12]
+  };
+  const SEC_PER_MONTH = { C: 5, B: 4, A: 3.25, S: 2.75 };
+  const TIME_BUFFER = { C: 10, B: 6, A: 4, S: 2 };
+  const RANK_BONUS = { C: 0, B: 10, A: 25, S: 40 };
+  const RANK_FLAVOR = {
+    C: "learn",
+    B: "gaps grow",
+    A: "nearly empty",
+    S: "full scramble"
+  };
 
   const BURST_COLORS = ["#fde047", "#fbbf24", "#fb923c", "#6ee7a0", "#7dd3fc", "#ffffff"];
 
@@ -32,17 +46,22 @@
   const stage = document.getElementById("stage");
   const stackEl = document.getElementById("stack");
   const fieldEl = document.getElementById("field");
+  const timerCurtain = document.getElementById("timer-curtain");
   const tileLayer = document.getElementById("tile-layer");
   const effectsEl = document.getElementById("effects");
   const overlay = document.getElementById("overlay");
   const overlayTitle = overlay.querySelector("h2");
-  const overlayText = overlay.querySelector("p");
+  const overlayText = document.getElementById("overlay-text");
+  const overlayExtra = document.getElementById("overlay-extra");
   const overlayStats = document.getElementById("overlay-stats");
   const startBtn = document.getElementById("start-btn");
   const endBtn = document.getElementById("end-btn");
   const scoreEl = document.getElementById("score");
   const scoreChip = document.getElementById("score-chip");
+  const rankLabel = document.getElementById("rank-label");
   const roundEl = document.getElementById("round");
+  const timerEl = document.getElementById("timer");
+  const timerChip = document.getElementById("timer-chip");
   const bestEl = document.getElementById("best");
 
   // --------------------------------------------------------------- state ---
@@ -50,12 +69,19 @@
   let score = 0;
   let best = Number(localStorage.getItem(BEST_KEY) || 0);
   let streak = 0;
-  let roundIndex = 0;       // 0..9
+  let rank = "C";
+  let roundIndex = 0;       // 0..2 within a run
   let missingCount = 0;
   let roundMistakes = 0;
   let totalMistakes = 0;
   let totalPlaced = 0;
   let placeClock = 0;       // timestamp of round start / last correct placement
+  let timedOut = false;
+
+  let roundSeconds = 0;
+  let timeLeft = 0;
+  let timerStart = 0;
+  let timerRaf = 0;
 
   let slots = [];           // 12 of { idx, rowEl, slotEl, filled, rect }
   let tiles = [];           // active field tiles { el, inner, monthIdx, homeX, homeY }
@@ -83,8 +109,19 @@
     return n + "th";
   }
 
-  function stageIdxFor(round) {
-    return Math.floor(round / ROUNDS_PER_STAGE);
+  function nextRank(r) {
+    const i = RANKS.indexOf(r);
+    return RANKS[Math.min(RANKS.length - 1, i + 1)];
+  }
+
+  function parseRank(stats) {
+    if (!stats || typeof stats !== "object") return "C";
+    const r = stats.rank;
+    return RANKS.includes(r) ? r : "C";
+  }
+
+  function roundTimeLimit(count) {
+    return count * (SEC_PER_MONTH[rank] || 4) + (TIME_BUFFER[rank] || 6);
   }
 
   function queueTask(fn, ms) {
@@ -356,6 +393,15 @@
     });
   }
 
+  function playRankUp() {
+    const ac = ensureAudio();
+    if (!ac || !sfxGain) return;
+    const t = ac.currentTime;
+    [392, 523, 659, 784, 1046].forEach((f, i) => {
+      tone(sfxGain, { type: "triangle", freq: f, t: t + i * 0.09, dur: 0.28, gain: 0.2 });
+    });
+  }
+
   // -------------------------------------------------------------- effects --
   function shakeStage(big) {
     const cls = big ? "shake-big" : "shake";
@@ -432,6 +478,76 @@
     }
     el.addEventListener("animationend", () => el.remove(), { once: true });
     effectsEl.appendChild(el);
+  }
+
+  // --------------------------------------------------------------- timer ---
+  function stopTimer() {
+    if (timerRaf) {
+      cancelAnimationFrame(timerRaf);
+      timerRaf = 0;
+    }
+  }
+
+  function resetCurtain() {
+    timerCurtain.style.height = "0%";
+    timerCurtain.classList.remove("visible", "warn", "critical");
+  }
+
+  function hideCurtain() {
+    stopTimer();
+    resetCurtain();
+    timerChip.classList.remove("timer-warn", "timer-critical");
+    timerEl.textContent = "–";
+  }
+
+  function updateTimerVisuals() {
+    const fracLeft = roundSeconds > 0 ? timeLeft / roundSeconds : 0;
+    const elapsedFrac = 1 - fracLeft;
+    timerCurtain.style.height = `${clamp(elapsedFrac * 100, 0, 100)}%`;
+    timerCurtain.classList.toggle("warn", fracLeft <= 0.33 && fracLeft > 0.15);
+    timerCurtain.classList.toggle("critical", fracLeft <= 0.15);
+
+    const secs = Math.max(0, Math.ceil(timeLeft));
+    timerEl.textContent = String(secs);
+    timerChip.classList.toggle("timer-warn", secs <= 8 && secs > 5);
+    timerChip.classList.toggle("timer-critical", secs <= 5);
+  }
+
+  function tickTimer(now) {
+    if (mode !== "playing") {
+      timerRaf = 0;
+      return;
+    }
+    timeLeft = Math.max(0, roundSeconds - (now - timerStart) / 1000);
+    updateTimerVisuals();
+    if (timeLeft <= 0) {
+      timerRaf = 0;
+      failOnTimeout();
+      return;
+    }
+    timerRaf = requestAnimationFrame(tickTimer);
+  }
+
+  function startTimer() {
+    stopTimer();
+    roundSeconds = roundTimeLimit(missingCount);
+    timeLeft = roundSeconds;
+    timerStart = performance.now();
+    timerCurtain.classList.add("visible");
+    timerCurtain.classList.remove("warn", "critical");
+    updateTimerVisuals();
+    timerRaf = requestAnimationFrame(tickTimer);
+  }
+
+  function failOnTimeout() {
+    if (mode !== "playing") return;
+    timedOut = true;
+    timeLeft = 0;
+    updateTimerVisuals();
+    timerCurtain.style.height = "100%";
+    timerCurtain.classList.add("critical");
+    shakeStage(true);
+    finishGame(false);
   }
 
   // -------------------------------------------------------------- layout ---
@@ -573,8 +689,8 @@
   // --------------------------------------------------------------- rounds --
   function buildRound() {
     clearHighlights();
-    const stageIdx = stageIdxFor(roundIndex);
-    missingCount = STAGES[stageIdx];
+    const schedule = MISSING_BY_RANK[rank] || MISSING_BY_RANK.C;
+    missingCount = schedule[roundIndex] || schedule[schedule.length - 1];
     roundMistakes = 0;
 
     const missing = shuffle([...Array(12).keys()]).slice(0, missingCount);
@@ -583,12 +699,18 @@
 
     placeClock = performance.now();
     updateHud();
+    startTimer();
   }
 
   function roundComplete() {
     mode = "intermission";
+    stopTimer();
+    timerChip.classList.remove("timer-warn", "timer-critical");
+    timerCurtain.classList.remove("warn", "critical");
+
     const perfect = roundMistakes === 0;
-    const bonus = 40 + missingCount * 10 + (perfect ? 25 : 0);
+    const timeBonus = Math.round(Math.max(0, timeLeft) * 2);
+    const bonus = 40 + missingCount * 10 + (RANK_BONUS[rank] || 0) + (perfect ? 25 : 0) + timeBonus;
     score += bonus;
     syncBest();
     updateHud();
@@ -597,18 +719,18 @@
     confettiRain(64);
 
     const finishedRound = roundIndex + 1;
-    const isLast = finishedRound >= TOTAL_ROUNDS;
+    const isLast = finishedRound >= ROUNDS_PER_RUN;
+    const timeBit = timeBonus > 0 ? ` · +${timeBonus} time` : "";
 
     if (isLast) {
-      showRibbon("YEAR COMPLETE!", `+${bonus} bonus${perfect ? " · PERFECT!" : ""}`);
+      showRibbon("RUN COMPLETE!", `+${bonus} bonus${perfect ? " · PERFECT!" : ""}${timeBit}`);
       queueTask(() => victory(), 1500);
       return;
     }
 
-    const nextStageIdx = stageIdxFor(finishedRound);
-    const stageUp = nextStageIdx !== stageIdxFor(roundIndex);
-    const sub = `+${bonus} bonus${perfect ? " · PERFECT!" : ""}` +
-      (stageUp ? ` · ${STAGES[nextStageIdx]} months missing next!` : "");
+    const nextMissing = (MISSING_BY_RANK[rank] || MISSING_BY_RANK.C)[finishedRound];
+    const sub = `+${bonus} bonus${perfect ? " · PERFECT!" : ""}${timeBit}` +
+      (nextMissing ? ` · ${nextMissing} months missing next!` : "");
     showRibbon(`Round ${finishedRound} clear!`, sub);
 
     queueTask(() => {
@@ -742,7 +864,7 @@
     const now = performance.now();
     const elapsed = (now - placeClock) / 1000;
     placeClock = now;
-    const pts = Math.max(15, 60 - Math.floor(elapsed * 4)) + stageIdxFor(roundIndex) * 5;
+    const pts = Math.max(15, 60 - Math.floor(elapsed * 4)) + RANKS.indexOf(rank) * 8;
     score += pts;
     streak += 1;
     totalPlaced += 1;
@@ -784,26 +906,53 @@
 
   function updateHud() {
     scoreEl.textContent = score;
+    rankLabel.textContent = rank;
+    rankLabel.className = "val rank-" + rank;
     roundEl.textContent = mode === "idle" || mode === "over"
       ? "–"
-      : `${Math.min(roundIndex + 1, TOTAL_ROUNDS)}/${TOTAL_ROUNDS}`;
+      : `${Math.min(roundIndex + 1, ROUNDS_PER_RUN)}/${ROUNDS_PER_RUN}`;
     bestEl.textContent = best;
     scoreChip.classList.toggle("hot", streak >= 3);
     musicHot = streak >= 3 && mode === "playing";
+  }
+
+  function rankLegendHtml() {
+    return `
+      <div class="rank-legend">
+        <span><span class="rank-badge rank-C">C</span> ${RANK_FLAVOR.C}</span>
+        <span><span class="rank-badge rank-B">B</span> ${RANK_FLAVOR.B}</span>
+        <span><span class="rank-badge rank-A">A</span> ${RANK_FLAVOR.A}</span>
+        <span><span class="rank-badge rank-S">S</span> ${RANK_FLAVOR.S}</span>
+      </div>`;
+  }
+
+  function showStartOverlay() {
+    overlayTitle.textContent = "CALENDAR SCRAMBLE";
+    overlayText.textContent =
+      "Drag each missing month to its ordinal slot — 1st through 12th. Clear three rounds before the curtain falls to rank up. Higher ranks leave fewer months filled in.";
+    overlayExtra.innerHTML = `
+      <p class="stat-line">Current rank <span class="rank-badge rank-${rank}">${rank}</span></p>
+      ${rankLegendHtml()}`;
+    overlayStats.hidden = true;
+    startBtn.textContent = "Fix the year";
+    overlay.classList.remove("hidden");
   }
 
   // ----------------------------------------------------------- game flow ---
   async function startGame() {
     ensureAudio();
     clearTasks();
+    stopTimer();
     score = 0;
     streak = 0;
     roundIndex = 0;
     roundMistakes = 0;
     totalMistakes = 0;
     totalPlaced = 0;
+    timedOut = false;
     drag = null;
     overlay.classList.add("hidden");
+    overlayExtra.innerHTML = "";
     buildRound();
     mode = "playing";
     updateHud();
@@ -822,43 +971,89 @@
   async function finishGame(won) {
     if (mode === "idle" || mode === "over") return;
     clearTasks();
+    stopTimer();
     stopMusic();
     mode = "over";
     drag = null;
 
+    let rankedUp = false;
+    const oldRank = rank;
     if (won) {
+      const nr = nextRank(rank);
+      if (nr !== rank) {
+        rank = nr;
+        rankedUp = true;
+        playRankUp();
+      }
       playVictory();
       shakeStage(true);
       confettiRain(110);
-      overlayTitle.textContent = "Year Master!";
+      overlayTitle.textContent = rankedUp ? "Rank Up!" : "Year Master!";
       overlayText.textContent = totalMistakes === 0
         ? "A flawless calendar — every month found its home on the first try!"
-        : "All twelve months back in order. The calendar is whole again!";
+        : "All months back in order for this run. The calendar holds!";
     } else {
-      overlayTitle.textContent = "Calendar closed";
-      overlayText.textContent = "The months will scatter again whenever you're ready.";
+      if (rank === "S" && roundIndex === 0) {
+        rank = "A";
+      }
+      overlayTitle.textContent = timedOut ? "Time's up!" : "Calendar closed";
+      overlayText.textContent = timedOut
+        ? "The curtain covered the year. Try again before it falls!"
+        : "The months will scatter again whenever you're ready.";
     }
-    overlayStats.hidden = false;
-    overlayStats.textContent = `Score ${score} · Best ${best} · ${totalPlaced} months placed`;
+
+    hideCurtain();
+    updateHud();
+
+    const rankHtml = rankedUp
+      ? `<div class="rank-up-banner">RANK UP! ${oldRank} → ${rank}</div>`
+      : "";
+
+    overlayExtra.innerHTML = `
+      ${rankHtml}
+      <div class="end-stats">
+        <div class="end-stat"><span class="lbl">Score</span><span class="num">${score}</span></div>
+        <div class="end-stat"><span class="lbl">Months</span><span class="num">${totalPlaced}</span></div>
+        <div class="end-stat"><span class="lbl">Rank</span><span class="num rank-${rank}">${rank}</span></div>
+      </div>
+      ${rankLegendHtml()}`;
+    overlayStats.hidden = true;
     startBtn.textContent = "Play again";
     overlay.classList.remove("hidden");
-    updateHud();
 
     try {
       await MathArcade.submitScore(GAME_ID, score);
-      await MathArcade.saveProgress(GAME_ID, stageIdxFor(Math.max(0, Math.min(roundIndex, TOTAL_ROUNDS - 1))) + 1, {
+      await MathArcade.saveProgress(GAME_ID, RANKS.indexOf(rank) + 1, {
+        rank,
+        lastScore: score,
+        bestScore: best,
         monthsPlaced: totalPlaced,
         mistakes: totalMistakes,
-        lastScore: score,
-        bestScore: best
+        won
       });
     } catch (err) {
       console.error(err);
     }
   }
 
+  async function loadRank() {
+    try {
+      const progress = await MathArcade.loadProgress(GAME_ID);
+      let stats = {};
+      if (progress && progress.statsJson) {
+        try { stats = JSON.parse(progress.statsJson); } catch (_) { stats = {}; }
+      }
+      rank = parseRank(stats);
+    } catch (_) {
+      rank = "C";
+    }
+  }
+
   startBtn.addEventListener("click", startGame);
-  endBtn.addEventListener("click", () => finishGame(false));
+  endBtn.addEventListener("click", () => {
+    timedOut = false;
+    finishGame(false);
+  });
 
   window.addEventListener("resize", () => {
     requestAnimationFrame(() => {
@@ -875,10 +1070,18 @@
     });
   });
 
-  window.addEventListener("pagehide", stopMusic);
+  window.addEventListener("pagehide", () => {
+    stopMusic();
+    stopTimer();
+  });
 
   // ---------------------------------------------------------------- boot ---
   bestEl.textContent = best;
   renderStack(null); // idle backdrop: the full year, neatly stacked
   computeStageRect();
+  updateHud();
+  loadRank().then(() => {
+    updateHud();
+    showStartOverlay();
+  });
 })();

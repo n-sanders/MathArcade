@@ -111,6 +111,31 @@
       box-shadow: 0 0 12px rgba(251, 191, 36, 0.4), inset 0 0 8px rgba(251, 191, 36, 0.14);
     }
 
+    .hud-chip.timer-warn {
+      border-color: rgba(251, 146, 60, 0.75);
+      box-shadow: 0 0 12px rgba(251, 146, 60, 0.4);
+      animation: timer-pulse 0.9s ease-in-out infinite;
+    }
+
+    .hud-chip.timer-warn .val { color: #fb923c; }
+
+    .hud-chip.timer-critical {
+      border-color: rgba(255, 84, 104, 0.85);
+      box-shadow: 0 0 14px rgba(255, 84, 104, 0.5);
+      animation: timer-pulse 0.45s ease-in-out infinite;
+    }
+
+    .hud-chip.timer-critical .val { color: var(--cal-red); }
+
+    @keyframes timer-pulse {
+      50% { transform: scale(1.04); }
+    }
+
+    .hud-chip .val.rank-C { color: #c8c8d0; }
+    .hud-chip .val.rank-B { color: #7dffa8; }
+    .hud-chip .val.rank-A { color: #9ec5ff; }
+    .hud-chip .val.rank-S { color: var(--cal-gold); }
+
     /* ------------------------------------------------------------- stage */
     .cal-stage {
       position: relative;
@@ -267,6 +292,45 @@
       position: relative;
       border-radius: 16px;
       border: 1px dashed rgba(107, 118, 148, 0.22);
+      overflow: hidden;
+    }
+
+    #timer-curtain {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 0%;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(251, 191, 36, 0.34) 0%,
+        rgba(251, 191, 36, 0.18) 70%,
+        rgba(251, 191, 36, 0) 100%
+      );
+      transition: background 0.2s ease;
+    }
+
+    #timer-curtain.visible { opacity: 1; }
+
+    #timer-curtain.warn {
+      background: linear-gradient(
+        180deg,
+        rgba(251, 146, 60, 0.42) 0%,
+        rgba(251, 146, 60, 0.22) 70%,
+        rgba(251, 146, 60, 0) 100%
+      );
+    }
+
+    #timer-curtain.critical {
+      background: linear-gradient(
+        180deg,
+        rgba(255, 84, 104, 0.5) 0%,
+        rgba(255, 84, 104, 0.28) 70%,
+        rgba(255, 84, 104, 0) 100%
+      );
     }
 
     #tile-layer {
@@ -498,6 +562,98 @@
       font-size: 1.15rem;
     }
 
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+
+    .rank-C { background: rgba(140, 140, 150, 0.25); color: #c8c8d0; border-color: rgba(180, 180, 190, 0.4); }
+    .rank-B { background: rgba(80, 180, 120, 0.2); color: #7dffa8; border-color: rgba(80, 220, 140, 0.45); }
+    .rank-A { background: rgba(80, 140, 255, 0.22); color: #9ec5ff; border-color: rgba(100, 160, 255, 0.5); }
+    .rank-S {
+      background: linear-gradient(135deg, rgba(255, 200, 60, 0.3), rgba(255, 100, 40, 0.35));
+      color: var(--cal-gold);
+      border-color: rgba(255, 209, 102, 0.65);
+      box-shadow: 0 0 12px rgba(255, 180, 40, 0.35);
+      animation: sGlow 1.8s ease-in-out infinite;
+    }
+
+    @keyframes sGlow {
+      50% { box-shadow: 0 0 20px rgba(255, 180, 40, 0.65); }
+    }
+
+    .rank-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem 0.75rem;
+      margin: 0.25rem 0 0.35rem;
+      font-size: 0.78rem;
+      color: var(--cal-dim);
+      max-width: 42ch;
+    }
+
+    .rank-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    .rank-up-banner {
+      margin: 0.15rem 0;
+      padding: 0.55rem 0.95rem;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.15), rgba(251, 146, 60, 0.22));
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--cal-gold);
+      animation: rankPop 0.6s ease;
+    }
+
+    @keyframes rankPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .end-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.35rem 0 0.15rem;
+    }
+
+    .end-stat {
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.25);
+      border-radius: 12px;
+      padding: 0.55rem 0.9rem;
+      min-width: 90px;
+    }
+
+    .end-stat .lbl {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--cal-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .end-stat .num {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--cal-gold);
+    }
+
     .btn {
       border: none;
       border-radius: 999px;
@@ -539,6 +695,9 @@
       .tile-inner { animation: none; }
       .fx-particle, .confetti { display: none !important; }
       .cal-stage.shake, .cal-stage.shake-big { animation: none; }
+      .hud-chip.timer-warn,
+      .hud-chip.timer-critical,
+      .rank-S { animation: none; }
     }
   </style>
 </head>
@@ -550,7 +709,9 @@
     </div>
     <div class="hud">
       <div class="hud-chip" id="score-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip">Rank <span class="val rank-C" id="rank-label">C</span></div>
       <div class="hud-chip">Round <span class="val" id="round">–</span></div>
+      <div class="hud-chip" id="timer-chip">Time <span class="val" id="timer">–</span></div>
       <div class="hud-chip">Best <span class="val" id="best">0</span></div>
       <button class="btn btn-ghost" id="end-btn">End</button>
     </div>
@@ -558,13 +719,16 @@
   <div class="cal-stage" id="stage">
     <div class="cal-layout">
       <div class="stack-panel" id="stack"></div>
-      <div class="field" id="field"></div>
+      <div class="field" id="field">
+        <div id="timer-curtain" aria-hidden="true"></div>
+      </div>
     </div>
     <div id="tile-layer"></div>
     <div id="effects"></div>
     <div class="overlay" id="overlay">
       <h2>CALENDAR SCRAMBLE</h2>
-      <p>The months got scattered across the board! Drag each one back to its ordinal slot — 1st through 12th. The faster you place them, the more points you earn.</p>
+      <p id="overlay-text">The months got scattered! Drag each one back to its ordinal slot — 1st through 12th. Clear three rounds before the curtain falls to rank up.</p>
+      <div id="overlay-extra"></div>
       <p id="overlay-stats" class="stat-line" hidden></p>
       <button class="btn" id="start-btn">Fix the year</button>
     </div>
