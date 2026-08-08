@@ -1044,6 +1044,11 @@
         try { stats = JSON.parse(progress.statsJson); } catch (_) { stats = {}; }
       }
       rank = parseRank(stats);
+      // Server best is authoritative once progress exists (incl. admin wipe → 0).
+      if (progress && progress.exists && Number.isFinite(Number(stats.bestScore))) {
+        best = Math.max(0, Math.floor(Number(stats.bestScore)));
+        localStorage.setItem(BEST_KEY, String(best));
+      }
     } catch (_) {
       rank = "C";
     }

@@ -1198,20 +1198,19 @@
     try {
       await MathArcade.ensurePlayer();
       const progress = await MathArcade.loadProgress(GAME_ID);
-      if (progress && progress.statsJson) {
+      if (progress && progress.exists) {
         let stats = {};
-        try {
-          stats = JSON.parse(progress.statsJson);
-        } catch (_) { /* ignore */ }
+        if (progress.statsJson) {
+          try {
+            stats = JSON.parse(progress.statsJson);
+          } catch (_) { /* ignore */ }
+        }
+        // Server best is authoritative once progress exists (incl. admin wipe → 0).
         const serverBest = Number(stats.bestScore || 0);
-        if (serverBest > best) {
-          best = serverBest;
-          localStorage.setItem(BEST_KEY, String(best));
-          bestEl.textContent = best;
-        }
-        if (serverBest > lastSubmittedScore) {
-          lastSubmittedScore = serverBest;
-        }
+        best = Number.isFinite(serverBest) ? Math.max(0, Math.floor(serverBest)) : 0;
+        localStorage.setItem(BEST_KEY, String(best));
+        bestEl.textContent = best;
+        lastSubmittedScore = best;
       }
       await backfillIdleBestReport();
     } catch (err) {

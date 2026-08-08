@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MathArcade Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/site.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+  <div class="shell admin-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">MathArcade</div>
+        <div class="brand-tag">Score admin</div>
+      </div>
+      <a class="admin-back" href="/">Back to arcade</a>
+    </header>
+
+    <section class="admin-panel" id="gate-panel">
+      <h1>Unlock admin</h1>
+      <p class="admin-note">Family-only tool. Enter the magic word to manage leaderboards.</p>
+      <form class="admin-gate-form" id="gate-form">
+        <label for="magic-word">Magic word</label>
+        <input id="magic-word" type="password" autocomplete="current-password" required />
+        <button type="submit">Unlock</button>
+      </form>
+      <p class="admin-status" id="gate-status" hidden></p>
+    </section>
+
+    <section class="admin-panel" id="admin-panel" hidden>
+      <h1>Leaderboards</h1>
+      <p class="admin-note">
+        Wipe a whole game board or delete one player’s score.
+        Personal bests for Make 10, Calendar, and Dino Dash are cleared in progress too.
+      </p>
+
+      <div class="admin-toolbar">
+        <label for="game-select">Game</label>
+        <select id="game-select"></select>
+        <button type="button" class="admin-danger" id="wipe-btn">Wipe leaderboard</button>
+      </div>
+
+      <p class="admin-status" id="admin-status" hidden></p>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="scores-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Score</th>
+              <th>Achieved</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="scores-body">
+            <tr><td colspan="4">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
