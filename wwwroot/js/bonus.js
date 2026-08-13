@@ -500,13 +500,15 @@
   function spawnObstacle() {
     const canBird = elapsed > BIRDS_AFTER;
     if (canBird && Math.random() < 0.34) {
-      const mustDuck = Math.random() < 0.6;
+      // High birds sit in the jump arc (apex still clips them) — run or duck
+      // under. Low birds skim the ground and are jumped like cacti.
+      const high = Math.random() < 0.6;
       obstacles.push({
         kind: "bird",
         x: LW + 90,
         w: 54,
-        h: 30,
-        bottom: mustDuck ? 52 : 10, // height of the bird's underside above ground
+        h: high ? 42 : 30,
+        bottom: high ? 128 : 10, // underside height above ground
         flap: Math.random() * 6,
         extra: 60 // birds fly a bit faster than the ground scrolls
       });
