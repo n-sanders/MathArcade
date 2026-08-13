@@ -4,7 +4,7 @@ Scratch pad for concepts that are not ready to build yet. One-liners are fine; f
 
 **Provenance:** Tag **`[AI]`** on ideas from assistant brainstorms; untagged entries are organic (yours).
 
-**Shipped today:** Make 10, Galaxy Maze, Lava Leap, Avalanche Run, Prime Search, Memory Match Math, Calendar Scramble (see `wwwroot/js/common.js` → `GAMES`).
+**Shipped today:** Make 10, Galaxy Maze, Lava Leap, Avalanche Run, Prime Search, Memory Match Math, Calendar Scramble, Dino Dash (daily bonus) (see `wwwroot/js/common.js` → `GAMES`).
 
 ---
 
@@ -85,4 +85,5 @@ Good concept, wrong time — note why so future-you remembers.
 
 Move titles here when they land in `GAMES` so the brainstorm stays honest.
 
-- **Month sorting → Calendar Scramble** (`calendar` in `GAMES`). Shipped with the numbered ordinal stack (1st–12th), not the pie layout; drag-to-slot with wrong-slot bounce (−5 pts). Two rounds per stage, more months missing each stage up to a fully scrambled year.
+- **Month sorting → Calendar Scramble** (`calendar` in `GAMES`). Shipped with the numbered ordinal stack (1st–12th), not the pie layout; drag-to-slot with wrong-slot bounce (−5 pts). Three rounds per stage, more months missing each stage up to a fully scrambled year.
+- **Dino Dash** (`bonus` in `GAMES`). Daily bonus endless runner; unlocks after a saved session in every catalog math game today.
