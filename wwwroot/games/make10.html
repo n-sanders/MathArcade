@@ -98,16 +98,76 @@
     }
 
     .hud-chip .val { color: var(--m10-cyan); }
+    .hud-chip .val.rank-C { color: #c8c8d0; }
+    .hud-chip .val.rank-B { color: #7dffa8; }
+    .hud-chip .val.rank-A { color: #9ec5ff; }
+    .hud-chip .val.rank-S { color: var(--m10-cyan); }
 
     .hud-chip.hot {
       border-color: rgba(34, 211, 238, 0.7);
       box-shadow: 0 0 12px rgba(34, 211, 238, 0.35), inset 0 0 8px rgba(34, 211, 238, 0.12);
     }
 
+    .hud-chip.timer-warn {
+      border-color: rgba(251, 146, 60, 0.75);
+      box-shadow: 0 0 12px rgba(251, 146, 60, 0.4);
+      animation: timer-pulse 0.9s ease-in-out infinite;
+    }
+    .hud-chip.timer-warn .val { color: #fb923c; }
+    .hud-chip.timer-critical {
+      border-color: rgba(255, 77, 94, 0.85);
+      box-shadow: 0 0 14px rgba(255, 77, 94, 0.5);
+      animation: timer-pulse 0.45s ease-in-out infinite;
+    }
+    .hud-chip.timer-critical .val { color: #ff4d5e; }
+
+    @keyframes timer-pulse {
+      50% { transform: scale(1.04); }
+    }
+
     .m10-stage {
       position: relative;
       flex: 1 1 auto;
       min-height: 0;
+      overflow: hidden;
+    }
+
+    #timer-curtain {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 0%;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(34, 211, 238, 0.34) 0%,
+        rgba(34, 211, 238, 0.18) 70%,
+        rgba(34, 211, 238, 0) 100%
+      );
+      transition: background 0.2s ease, opacity 0.2s ease;
+    }
+
+    #timer-curtain.visible { opacity: 1; }
+
+    #timer-curtain.warn {
+      background: linear-gradient(
+        180deg,
+        rgba(251, 146, 60, 0.42) 0%,
+        rgba(251, 146, 60, 0.22) 70%,
+        rgba(251, 146, 60, 0) 100%
+      );
+    }
+
+    #timer-curtain.critical {
+      background: linear-gradient(
+        180deg,
+        rgba(255, 77, 94, 0.5) 0%,
+        rgba(255, 77, 94, 0.28) 70%,
+        rgba(255, 77, 94, 0) 100%
+      );
     }
 
     #game-canvas {
@@ -161,6 +221,113 @@
       font-weight: 800;
       font-size: 1.15rem;
     }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+
+    .rank-C { background: rgba(140, 140, 150, 0.25); color: #c8c8d0; border-color: rgba(180, 180, 190, 0.4); }
+    .rank-B { background: rgba(80, 180, 120, 0.2); color: #7dffa8; border-color: rgba(80, 220, 140, 0.45); }
+    .rank-A { background: rgba(80, 140, 255, 0.22); color: #9ec5ff; border-color: rgba(100, 160, 255, 0.5); }
+    .rank-S {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.3), rgba(79, 124, 255, 0.35));
+      color: var(--m10-cyan);
+      border-color: rgba(34, 211, 238, 0.65);
+      box-shadow: 0 0 12px rgba(34, 211, 238, 0.4);
+      animation: sGlow 1.8s ease-in-out infinite;
+    }
+
+    @keyframes sGlow {
+      50% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.7); }
+    }
+
+    .rank-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem 0.75rem;
+      margin: 0.35rem auto;
+      font-size: 0.78rem;
+      color: var(--m10-dim);
+      max-width: 42ch;
+    }
+
+    .rank-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    .rank-up-banner {
+      margin: 0.35rem auto;
+      padding: 0.55rem 0.95rem;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(34, 211, 238, 0.15), rgba(79, 124, 255, 0.22));
+      border: 1px solid rgba(34, 211, 238, 0.45);
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--m10-cyan);
+      animation: rankPop 0.6s ease;
+    }
+
+    @keyframes rankPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    #overlay-extra {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
+    }
+
+    .end-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.5rem auto;
+    }
+
+    .end-stat {
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      border-radius: 12px;
+      padding: 0.55rem 0.9rem;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    .end-stat .lbl {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--m10-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .end-stat .num {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--m10-cyan);
+    }
+
+    .end-stat .num.rank-C { color: #c8c8d0; }
+    .end-stat .num.rank-B { color: #7dffa8; }
+    .end-stat .num.rank-A { color: #9ec5ff; }
+    .end-stat .num.rank-S { color: var(--m10-cyan); }
 
     .btn {
       border: none;
@@ -234,6 +401,8 @@
     <div class="hud">
       <div class="hud-chip">Score <span class="val" id="score">0</span></div>
       <div class="hud-chip">Circuit <span class="val" id="circuit">–</span></div>
+      <div class="hud-chip">Rank <span class="val rank-C" id="rank-label">C</span></div>
+      <div class="hud-chip" id="timer-chip" hidden>Time <span class="val" id="circuit-timer">–</span></div>
       <div class="hud-chip" id="streak-chip">Streak <span class="val" id="streak">0</span></div>
       <div class="hud-chip">Best <span class="val" id="best">0</span></div>
       <button class="btn btn-ghost" id="end-btn">End</button>
@@ -241,9 +410,11 @@
   </div>
   <div class="m10-stage" id="stage">
     <canvas id="game-canvas"></canvas>
+    <div id="timer-curtain" aria-hidden="true"></div>
     <div class="overlay" id="overlay">
       <h2>MAKE 10</h2>
-      <p>A live wire hums on the left. Guide its free end to the number that adds with the base to make <strong>10</strong>. Complete <strong>10 circuits</strong> to finish the run.</p>
+      <p>A live wire hums on the left. Guide its free end to the number that adds with the base to make <strong>10</strong>. Complete <strong>10 circuits</strong> to rank up. Higher ranks pack the field and tighten the snap.</p>
+      <div id="overlay-extra"></div>
       <p id="overlay-stats" class="stat-line" hidden></p>
       <div class="overlay-actions">
         <button class="btn" id="start-btn">Power up</button>

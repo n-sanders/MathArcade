@@ -4,7 +4,9 @@
   const GAME_ID = "memorymatch";
   const SOUND_KEY = "matharcade_memorymatch_sound";
   const ROUND_CARD_COUNTS = [8, 12, 16, 20, 24];
-  const MAX_DIFFICULTY = 12;
+  const RANKS = ["C", "B", "A", "S"];
+  const RANK_FLAVOR = { C: "spark", B: "flicker", A: "flare", S: "nova" };
+  const RANK_SCALE = { C: 1, B: 5, A: 8, S: 12 };
   const MATCH_BASE_POINTS = 100;
   const PAIR_HUES = [333, 267, 202, 42, 155, 18, 290, 184, 72, 230, 348, 125];
   const BURST_COLORS = ["#ffd84d", "#ff5ea8", "#7c4dff", "#37d8e6", "#52d68b", "#ff7b6b"];
@@ -28,6 +30,8 @@
   const scoreValueEl = document.getElementById("score-value");
   const scoreChipEl = document.getElementById("score-chip");
   const familyValueEl = document.getElementById("family-value");
+  const rankValueEl = document.getElementById("rank-value");
+  const overlayExtraEl = document.getElementById("overlay-extra");
   const overlayEl = document.getElementById("overlay");
   const overlayKickerEl = document.getElementById("overlay-kicker");
   const overlayTitleEl = document.getElementById("overlay-title");
@@ -53,6 +57,7 @@
     phase: "intro",
     round: 1,
     difficulty: 1,
+    rank: "C",
     family: "add",
     pairCount: 4,
     matchedPairs: 0,
@@ -111,6 +116,44 @@
     return ROUND_CARD_COUNTS[Math.min(Math.max(1, round) - 1, ROUND_CARD_COUNTS.length - 1)];
   }
 
+  function nextRank(r) {
+    const i = RANKS.indexOf(r);
+    return RANKS[Math.min(RANKS.length - 1, i + 1)];
+  }
+
+  function rankLevel() {
+    return RANKS.indexOf(state.rank) + 1;
+  }
+
+  function rankScale() {
+    return RANK_SCALE[state.rank] || 1;
+  }
+
+  function rankFromProgress(progress) {
+    let stats = {};
+    if (progress && progress.statsJson) {
+      try { stats = JSON.parse(progress.statsJson); } catch (_) { stats = {}; }
+    }
+    return RANKS.includes(stats.rank) ? stats.rank : "C";
+  }
+
+  function rankLegendHtml() {
+    return `
+      <div class="rank-legend">
+        <span><span class="rank-badge rank-C">C</span> ${RANK_FLAVOR.C}</span>
+        <span><span class="rank-badge rank-B">B</span> ${RANK_FLAVOR.B}</span>
+        <span><span class="rank-badge rank-A">A</span> ${RANK_FLAVOR.A}</span>
+        <span><span class="rank-badge rank-S">S</span> ${RANK_FLAVOR.S}</span>
+      </div>`;
+  }
+
+  function paintStartOverlay() {
+    if (!overlayExtraEl) return;
+    overlayExtraEl.innerHTML = `
+      <p>Current rank <span class="rank-badge rank-${state.rank}">${state.rank}</span></p>
+      ${rankLegendHtml()}`;
+  }
+
   function familyLabel(family) {
     return {
       add: "Addition",
@@ -121,9 +164,9 @@
   }
 
   function chooseFamily() {
-    if (state.difficulty <= 2) return "add";
-    if (state.difficulty <= 4) return Math.random() < 0.5 ? "add" : "sub";
-    if (state.difficulty <= 6) return Math.random() < 0.5 ? "mul" : "add";
+    if (state.rank === "C") return "add";
+    if (state.rank === "B") return Math.random() < 0.5 ? "add" : "sub";
+    if (state.rank === "A") return Math.random() < 0.5 ? "mul" : "add";
     const roll = Math.random();
     if (roll < 0.5) return "mul";
     if (roll < 0.78) return "sub";
@@ -131,9 +174,10 @@
   }
 
   function makeFact(family) {
+    const scale = rankScale();
     if (family === "add") {
-      const a = randInt(1, 9 + state.difficulty);
-      const b = randInt(1, 9 + state.difficulty);
+      const a = randInt(1, 9 + scale);
+      const b = randInt(1, 9 + scale);
       return {
         expression: `${a} + ${b}`,
         answer: String(a + b),
@@ -142,7 +186,7 @@
     }
 
     if (family === "sub") {
-      const a = randInt(5, 12 + state.difficulty);
+      const a = randInt(5, 12 + scale);
       const b = randInt(1, a);
       return {
         expression: `${a} − ${b}`,
@@ -151,7 +195,7 @@
       };
     }
 
-    const maxFactor = Math.min(12, 4 + state.difficulty);
+    const maxFactor = { C: 5, B: 9, A: 10, S: 12 }[state.rank] || 5;
     const a = randInt(2, maxFactor);
     const b = randInt(2, maxFactor);
     return {
@@ -204,7 +248,7 @@
     let fallback = 0;
     while (pairCards.length / 2 < pairCount) {
       fallback += 1;
-      let a = 12 + state.difficulty + fallback;
+      let a = 12 + rankScale() + fallback;
       const b = 1 + (fallback % 8);
       while (usedAnswers.has(String(a + b))) a += 1;
       const answer = String(a + b);
@@ -258,6 +302,10 @@
     pairsValueEl.textContent = `${state.matchedPairs} / ${state.pairCount}`;
     scoreValueEl.textContent = formatScore(state.sessionScore);
     familyValueEl.textContent = familyLabel(state.family);
+    if (rankValueEl) {
+      rankValueEl.textContent = state.rank;
+      rankValueEl.className = "hud-value rank-" + state.rank;
+    }
 
     if (animateScore) {
       scoreChipEl.classList.remove("score-bump");
@@ -630,10 +678,21 @@
     const bonus = roundClearBonus();
     state.roundScore += bonus;
     state.sessionScore += bonus;
-    state.difficulty = Math.min(MAX_DIFFICULTY, state.difficulty + 1);
+    const atMaxBoard = state.cards.length === ROUND_CARD_COUNTS[ROUND_CARD_COUNTS.length - 1];
+    const oldRank = state.rank;
+    let rankedUp = false;
+    if (atMaxBoard) {
+      const nr = nextRank(state.rank);
+      if (nr !== state.rank) {
+        state.rank = nr;
+        rankedUp = true;
+      }
+    }
+    state.difficulty = rankLevel();
     updateHud(true);
     stopMusic();
     playRoundWin();
+    if (rankedUp) playRankUp();
     celebrateRound();
     announce(`Board cleared! +${bonus} celebration bonus!`, true, 1800);
 
@@ -645,6 +704,9 @@
       seconds,
       family: state.family,
       difficulty: state.difficulty,
+      rank: state.rank,
+      rankedUp,
+      oldRank,
       roundScore: state.roundScore,
       sessionScore: state.sessionScore
     };
@@ -656,11 +718,18 @@
     const nextCardCount = cardCountForRound(state.round + 1);
     const atMaximum = state.cards.length === ROUND_CARD_COUNTS[ROUND_CARD_COUNTS.length - 1];
     overlayMode = "next";
-    overlayKickerEl.textContent = `Round ${state.round} complete`;
-    overlayTitleEl.textContent = "Board cleared!";
-    overlayCopyEl.textContent = atMaximum
-      ? "You reached 24-card party mode! The board stays big while fresh math keeps coming."
-      : `Wonderful work! The next round grows to ${nextCardCount} colorful cards.`;
+    overlayKickerEl.textContent = snapshot.rankedUp ? "Rank up" : `Round ${state.round} complete`;
+    overlayTitleEl.textContent = snapshot.rankedUp ? "Rank Up!" : "Board cleared!";
+    overlayCopyEl.textContent = snapshot.rankedUp
+      ? `The math grew with you — ${snapshot.oldRank} → ${state.rank}. The board stays at 24 cards.`
+      : atMaximum
+        ? "You reached 24-card party mode! The board stays big while fresh math keeps coming."
+        : `Wonderful work! The next round grows to ${nextCardCount} colorful cards.`;
+    if (overlayExtraEl) {
+      overlayExtraEl.innerHTML = snapshot.rankedUp
+        ? `<div class="rank-up-banner">RANK UP! ${snapshot.oldRank} → ${state.rank}</div>${rankLegendHtml()}`
+        : rankLegendHtml();
+    }
     roundPointsEl.textContent = `+${formatScore(snapshot.roundScore)}`;
     sessionPointsEl.textContent = formatScore(snapshot.sessionScore);
     overlayStatsEl.hidden = false;
@@ -676,6 +745,7 @@
     try {
       await MathArcade.submitScore(GAME_ID, snapshot.roundScore);
       await MathArcade.saveProgress(GAME_ID, snapshot.difficulty, {
+        rank: snapshot.rank,
         round: snapshot.round,
         cardCount: snapshot.cardCount,
         pairCount: snapshot.pairCount,
@@ -727,18 +797,19 @@
     ensureAudio();
     playButtonSound();
 
-    let difficulty = 1;
+    let rank = "C";
     if (window.MathArcade && typeof MathArcade.loadProgress === "function") {
       try {
         const progress = await MathArcade.loadProgress(GAME_ID);
-        difficulty = Number(progress && progress.difficultyLevel) || 1;
+        rank = rankFromProgress(progress);
       } catch (error) {
         console.warn("Memory Match progress could not be loaded; starting locally.", error);
       }
     }
 
     state.round = 1;
-    state.difficulty = clamp(Math.floor(difficulty), 1, MAX_DIFFICULTY);
+    state.rank = RANKS.includes(rank) ? rank : "C";
+    state.difficulty = rankLevel();
     state.sessionScore = 0;
     overlayActionEl.disabled = false;
     startRound();
@@ -1052,6 +1123,22 @@
     });
   }
 
+  function playRankUp() {
+    const context = ensureAudio();
+    if (!context) return;
+    const now = context.currentTime;
+    [392, 523, 659, 784, 1046].forEach((frequency, index) => {
+      playTone(sfxGain, {
+        type: "triangle",
+        frequency,
+        time: now + index * 0.09,
+        duration: 0.28,
+        gain: 0.16,
+        attack: 0.008
+      });
+    });
+  }
+
   function setSoundEnabled(enabled) {
     soundEnabled = enabled;
     storeSoundPreference();
@@ -1116,4 +1203,15 @@
   updateSoundControl();
   updateHud(false);
   requestGridLayout();
+  (async () => {
+    if (window.MathArcade && typeof MathArcade.loadProgress === "function") {
+      try {
+        const progress = await MathArcade.loadProgress(GAME_ID);
+        state.rank = rankFromProgress(progress);
+        state.difficulty = rankLevel();
+      } catch (_) { /* start at C */ }
+    }
+    updateHud(false);
+    paintStartOverlay();
+  })();
 })();

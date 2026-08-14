@@ -7,6 +7,15 @@
   const TARGET_PRIMES = Object.freeze([2, 3, 5, 7, 11, 13, 17, 19, 23]);
   const VALID_POOL_LENGTHS = new Set([0, 3, 6]);
   const VICTORY_REVEAL_MS = 1650;
+  const RANKS = ["C", "B", "A", "S"];
+  const RANK_FLAVOR = { C: "glow", B: "beam", A: "flood", S: "nova" };
+  const MAX_NUMBER = { C: 30, B: 50, A: 70, S: 97 };
+  const GRID_SIZE = {
+    C: { cols: 5, rows: 4 },
+    B: { cols: 6, rows: 5 },
+    A: { cols: 7, rows: 6 },
+    S: { cols: 8, rows: 7 }
+  };
 
   // DOM
   const stage = document.getElementById("stage");
@@ -24,10 +33,11 @@
   const messageEl = document.getElementById("message");
   const scoreEl = document.getElementById("score");
   const foundEl = document.getElementById("found");
-  const levelEl = document.getElementById("level");
+  const rankLabel = document.getElementById("rank-label");
   const scoreChip = document.getElementById("score-chip");
   const foundChip = document.getElementById("found-chip");
-  const levelChip = document.getElementById("level-chip");
+  const rankChip = document.getElementById("rank-chip");
+  const overlayExtra = document.getElementById("overlay-extra");
   const soundToggle = document.getElementById("sound-toggle");
   const soundIcon = document.getElementById("sound-icon");
   const soundLabel = document.getElementById("sound-label");
@@ -41,7 +51,7 @@
   // Game state
   let phase = "idle";
   let score = 0;
-  let difficulty = 1;
+  let rank = "C";
   let targets = [];
   let foundSet = new Set();
   let playing = false;
@@ -102,6 +112,40 @@
     }
   }
 
+  function nextRank(r) {
+    const i = RANKS.indexOf(r);
+    return RANKS[Math.min(RANKS.length - 1, i + 1)];
+  }
+
+  function rankLevel() {
+    return RANKS.indexOf(rank) + 1;
+  }
+
+  function rankFromProgress(progress) {
+    let stats = {};
+    if (progress && progress.statsJson) {
+      try { stats = JSON.parse(progress.statsJson); } catch (_) { stats = {}; }
+    }
+    return RANKS.includes(stats.rank) ? stats.rank : "C";
+  }
+
+  function rankLegendHtml() {
+    return `
+      <div class="rank-legend">
+        <span><span class="rank-badge rank-C">C</span> ${RANK_FLAVOR.C}</span>
+        <span><span class="rank-badge rank-B">B</span> ${RANK_FLAVOR.B}</span>
+        <span><span class="rank-badge rank-A">A</span> ${RANK_FLAVOR.A}</span>
+        <span><span class="rank-badge rank-S">S</span> ${RANK_FLAVOR.S}</span>
+      </div>`;
+  }
+
+  function paintStartOverlay() {
+    if (!overlayExtra) return;
+    overlayExtra.innerHTML = `
+      <p class="overlay-stats">Current rank <span class="rank-badge rank-${rank}">${rank}</span></p>
+      ${rankLegendHtml()}`;
+  }
+
   function isPrime(value) {
     if (!Number.isInteger(value) || value < 2) return false;
     if (value === 2) return true;
@@ -148,17 +192,11 @@
   }
 
   function maxNumber() {
-    if (difficulty <= 2) return 30;
-    if (difficulty <= 4) return 50;
-    if (difficulty <= 6) return 70;
-    return 97;
+    return MAX_NUMBER[rank] || 30;
   }
 
   function gridSize() {
-    if (difficulty <= 2) return { cols: 5, rows: 4 };
-    if (difficulty <= 4) return { cols: 6, rows: 5 };
-    if (difficulty <= 6) return { cols: 7, rows: 6 };
-    return { cols: 8, rows: 7 };
+    return GRID_SIZE[rank] || GRID_SIZE.C;
   }
 
   function compositePool(limit) {
@@ -246,10 +284,13 @@
   function updateHud() {
     scoreEl.textContent = String(score);
     foundEl.textContent = `${foundSet.size}/3`;
-    levelEl.textContent = String(difficulty);
+    if (rankLabel) {
+      rankLabel.textContent = rank;
+      rankLabel.className = `hud-value rank-${rank}`;
+    }
     scoreChip.setAttribute("aria-label", `Score ${score}`);
     foundChip.setAttribute("aria-label", `${foundSet.size} of 3 primes found`);
-    levelChip.setAttribute("aria-label", `Level ${difficulty}`);
+    if (rankChip) rankChip.setAttribute("aria-label", `Rank ${rank}`);
   }
 
   function setMessage(text, tone) {
@@ -296,7 +337,7 @@
       cell.classList.add("found", "hit");
 
       const elapsedSeconds = (performance.now() - huntStart) / 1000;
-      const points = Math.max(20, 80 - Math.floor(elapsedSeconds * 2)) + difficulty * 5;
+      const points = Math.max(20, 80 - Math.floor(elapsedSeconds * 2)) + rankLevel() * 8;
       score += points;
 
       updateHud();
@@ -410,28 +451,43 @@
     if (activeRound !== roundId || phase !== "revealing") return;
 
     phase = "results";
-    difficulty = Math.min(12, difficulty + 1);
+    const oldRank = rank;
+    const nr = nextRank(rank);
+    const rankedUp = nr !== rank;
+    if (rankedUp) rank = nr;
     score += 40;
     updateHud();
 
-    overlayKicker.textContent = "Mission complete";
-    overlayTitle.textContent = "All primes found!";
-    overlayCopy.textContent = "You tracked every target through the dark. The whole board is glowing because of you.";
+    overlayKicker.textContent = rankedUp ? "Rank up" : "Mission complete";
+    overlayTitle.textContent = rankedUp ? "Rank Up!" : "All primes found!";
+    overlayCopy.textContent = rankedUp
+      ? `The field grows brighter. You climbed from ${oldRank} to ${rank}.`
+      : "You tracked every target through the dark. The whole board is glowing because of you.";
     overlayStats.hidden = false;
-    overlayStats.textContent = `Score ${score} · Next level ${difficulty}`;
+    overlayStats.textContent = `Score ${score}`;
+    if (overlayExtra) {
+      overlayExtra.innerHTML = `
+        ${rankedUp ? `<div class="rank-up-banner">RANK UP! ${oldRank} → ${rank}</div>` : ""}
+        <div class="end-stats">
+          <div class="end-stat"><span class="lbl">Score</span><span class="num">${score}</span></div>
+          <div class="end-stat"><span class="lbl">Rank</span><span class="num rank-${rank}">${rank}</span></div>
+        </div>
+        ${rankLegendHtml()}`;
+    }
     startBtn.textContent = "Hunt again";
     startBtn.disabled = false;
     overlay.classList.remove("hidden");
+    if (rankedUp) playRankUp();
 
     const completedTargets = [...targets];
     const completedFound = [...foundSet];
     const completedScore = score;
-    const completedDifficulty = difficulty;
 
     pendingSave = (async () => {
       try {
         await MathArcade.submitScore(GAME_ID, completedScore);
-        await MathArcade.saveProgress(GAME_ID, completedDifficulty, {
+        await MathArcade.saveProgress(GAME_ID, rankLevel(), {
+          rank,
           targets: completedTargets,
           found: completedFound
         });
@@ -501,7 +557,7 @@
 
     if (activeRound !== roundId) return;
 
-    difficulty = clamp(Number(progress?.difficultyLevel) || difficulty || 1, 1, 12);
+    rank = rankFromProgress(progress);
     score = 0;
     targets = drawTargets();
     foundSet = new Set();
@@ -512,6 +568,7 @@
     updateHud();
     overlay.classList.add("hidden");
     overlayStats.hidden = true;
+    if (overlayExtra) overlayExtra.innerHTML = "";
     stage.classList.remove("idle");
     stage.classList.add("memorizing");
     memoryCard.hidden = false;
@@ -741,6 +798,19 @@
     });
   }
 
+  function playRankUp() {
+    [392, 523, 659, 784, 1046].forEach((freq, index) => {
+      playTone({
+        from: freq,
+        to: freq * 1.02,
+        duration: 0.28,
+        volume: 0.14,
+        type: "triangle",
+        delay: index * 0.09
+      });
+    });
+  }
+
   function updateSoundControl() {
     soundToggle.setAttribute("aria-pressed", String(muted));
     soundToggle.setAttribute("aria-label", muted ? "Turn sound on" : "Mute sound");
@@ -792,4 +862,12 @@
   updateSoundControl();
   updateHud();
   setBeamPosition(50, 50);
+  (async () => {
+    try {
+      await MathArcade.ensurePlayer();
+      rank = rankFromProgress(await MathArcade.loadProgress(GAME_ID));
+    } catch (_) { /* start at C */ }
+    updateHud();
+    paintStartOverlay();
+  })();
 })();

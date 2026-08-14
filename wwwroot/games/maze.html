@@ -101,6 +101,10 @@
     }
 
     .hud-chip .val { color: var(--mz-cyan); }
+    .hud-chip .val.rank-C { color: #c8c8d0; }
+    .hud-chip .val.rank-B { color: #7dffa8; }
+    .hud-chip .val.rank-A { color: #9ec5ff; }
+    .hud-chip .val.rank-S { color: var(--mz-amber); }
 
     /* ------------------------------------------------------------- stage */
     .mz-stage-wrap {
@@ -546,6 +550,113 @@
       color: var(--mz-dim);
     }
 
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+
+    .rank-C { background: rgba(140, 140, 150, 0.25); color: #c8c8d0; border-color: rgba(180, 180, 190, 0.4); }
+    .rank-B { background: rgba(80, 180, 120, 0.2); color: #7dffa8; border-color: rgba(80, 220, 140, 0.45); }
+    .rank-A { background: rgba(80, 140, 255, 0.22); color: #9ec5ff; border-color: rgba(100, 160, 255, 0.5); }
+    .rank-S {
+      background: linear-gradient(135deg, rgba(255, 209, 102, 0.3), rgba(168, 85, 247, 0.35));
+      color: var(--mz-amber);
+      border-color: rgba(255, 209, 102, 0.65);
+      box-shadow: 0 0 12px rgba(255, 209, 102, 0.4);
+      animation: sGlow 1.8s ease-in-out infinite;
+    }
+
+    @keyframes sGlow {
+      50% { box-shadow: 0 0 20px rgba(255, 209, 102, 0.7); }
+    }
+
+    .rank-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem 0.75rem;
+      margin: 0.35rem auto;
+      font-size: 0.78rem;
+      color: var(--mz-dim);
+      max-width: 42ch;
+    }
+
+    .rank-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    .rank-up-banner {
+      margin: 0.35rem auto;
+      padding: 0.55rem 0.95rem;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(34, 211, 238, 0.15), rgba(168, 85, 247, 0.22));
+      border: 1px solid rgba(34, 211, 238, 0.45);
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--mz-amber);
+      animation: rankPop 0.6s ease;
+    }
+
+    @keyframes rankPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    #overlay-extra {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
+    }
+
+    .end-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.5rem auto;
+    }
+
+    .end-stat {
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      border-radius: 12px;
+      padding: 0.55rem 0.9rem;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    .end-stat .lbl {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--mz-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .end-stat .num {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--mz-cyan);
+    }
+
+    .end-stat .num.rank-C { color: #c8c8d0; }
+    .end-stat .num.rank-B { color: #7dffa8; }
+    .end-stat .num.rank-A { color: #9ec5ff; }
+    .end-stat .num.rank-S { color: var(--mz-amber); }
+
     .btn-primary {
       margin-top: 1rem;
       border: none;
@@ -581,7 +692,7 @@
     <div class="hud">
       <div class="hud-chip">Score <span class="val" id="score">0</span></div>
       <div class="hud-chip">Jump <span class="val" id="jump">–</span></div>
-      <div class="hud-chip">Level <span class="val" id="level">1</span></div>
+      <div class="hud-chip">Rank <span class="val rank-C" id="rank-label">C</span></div>
     </div>
   </header>
 
@@ -607,6 +718,7 @@
         <h2>Operation Starseed</h2>
         <p>Deep-space telescopes picked up a strange signal — hints of <strong>alien life</strong> somewhere in the star network around Sol!</p>
         <p class="sub">Your nav computer needs a multiplication answer to lock in each hyperspace jump. Pick the star showing the correct product and follow the signal. Somewhere out there, 10 to 15 jumps away, a living world is waiting…</p>
+        <div id="overlay-extra"></div>
         <button class="btn-primary" id="start-btn">🚀 Launch mission</button>
       </div>
     </div>

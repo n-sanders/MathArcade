@@ -8,15 +8,15 @@
       id: "make10",
       title: "Make 10",
       path: "/games/make10.html",
-      blurb: "Drag a live electric wire to the number that completes 10!",
-      howTo: "A glowing wire is anchored to the base number. Guide its free end to the number that adds with the base to make 10, then click or release to connect. Correct circuits spark and boost your streak; wrong ones fizzle. Complete 10 circuits to finish the run."
+      blurb: "Drag a live electric wire to the number that completes 10. Climb C→S voltage ranks!",
+      howTo: "A glowing wire is anchored to the base number. Guide its free end to the number that adds with the base to make 10, then click or release to connect. Correct circuits spark and boost your streak; wrong ones fizzle. Complete 10 circuits to rank up (C→B→A→S). Higher ranks pack the field with more decoys, tighten the snap, and add a per-circuit timer at A and S."
     },
     {
       id: "maze",
       title: "Galaxy Maze",
       path: "/games/maze.html",
-      blurb: "Pilot a starship from Sol and follow a signal of alien life across a star maze.",
-      howTo: "Each hyperspace jump needs a multiplication answer. Pick the neighboring star showing the correct product to launch, scan each system for life, and find the living world 10-15 jumps out."
+      blurb: "Pilot a starship from Sol and follow a signal of alien life. Climb C→S navigation ranks!",
+      howTo: "Each hyperspace jump needs a multiplication answer. Pick the neighboring star showing the correct product to launch, scan each system for life, and find the living world 10-15 jumps out. Completing a mission ranks you up (C→B→A→S); higher ranks use bigger factors and more decoy products."
     },
     {
       id: "skipcounting",
@@ -36,8 +36,8 @@
       id: "primesearch",
       title: "Prime Search",
       path: "/games/primesearch.html",
-      blurb: "Memorize three primes, then hunt them with your flashlight.",
-      howTo: "Study the primes, then move your mouse to light the dark number field and click each target."
+      blurb: "Memorize three primes, then hunt them with your flashlight. Climb C→S ranks as the field grows!",
+      howTo: "Study the primes, then move your mouse to light the dark number field and click each target. Find all three to rank up (C→B→A→S). Higher ranks use a bigger board and larger numbers. Open Mission targets any time you need a reminder."
     },
     {
       id: "calendar",
@@ -50,8 +50,8 @@
       id: "memorymatch",
       title: "Memory Match Math",
       path: "/games/memorymatch.html",
-      blurb: "Match math problems with their answers as the colorful card board grows.",
-      howTo: "Flip two cards at a time and pair each expression with its answer. Every match earns points and a celebration. Clear each board to grow from 8 to 24 cards; misses simply flip back with no penalty."
+      blurb: "Match math problems with their answers as the colorful card board grows. Climb C→S ranks!",
+      howTo: "Flip two cards at a time and pair each expression with its answer. Every match earns points and a celebration. Clear each board to grow from 8 to 24 cards; misses simply flip back with no penalty. Clear a 24-card board to rank up (C→B→A→S). Higher ranks mix in subtraction and multiplication with bigger numbers."
     },
     {
       id: "bonus",

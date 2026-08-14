@@ -7,6 +7,11 @@
   const GAME_ID = "make10";
   const BEST_KEY = "matharcade_make10_best";
   const TARGET_CORRECT = 10;
+  const RANKS = ["C", "B", "A", "S"];
+  const RANK_FLAVOR = { C: "spark", B: "live wire", A: "high voltage", S: "overload" };
+  const NODES_BY_RANK = { C: 4, B: 6, A: 7, S: 8 };
+  const SNAP_PAD = { C: 62, B: 42, A: 28, S: 18 };
+  const CIRCUIT_SEC = { C: 0, B: 0, A: 8, S: 5 };
 
   // ---------------------------------------------------------------- DOM ----
   const canvas = document.getElementById("game-canvas");
@@ -15,6 +20,7 @@
   const overlay = document.getElementById("overlay");
   const overlayTitle = overlay.querySelector("h2");
   const overlayText = overlay.querySelector("p");
+  const overlayExtra = document.getElementById("overlay-extra");
   const overlayStats = document.getElementById("overlay-stats");
   const startBtn = document.getElementById("start-btn");
   const homeBtn = document.getElementById("home-btn");
@@ -24,6 +30,10 @@
   const streakEl = document.getElementById("streak");
   const bestEl = document.getElementById("best");
   const streakChip = document.getElementById("streak-chip");
+  const rankLabel = document.getElementById("rank-label");
+  const timerChip = document.getElementById("timer-chip");
+  const timerEl = document.getElementById("circuit-timer");
+  const timerCurtain = document.getElementById("timer-curtain");
 
   // -------------------------------------------------------------- colors ---
   const C = {
@@ -48,6 +58,10 @@
   let best = Number(localStorage.getItem(BEST_KEY) || 0);
   let roundsPlayed = 0;
   let correctCount = 0;
+  let rank = "C";
+  let timedOut = false;
+  let circuitDeadline = 0;
+  let circuitDuration = 0;
   let lastBase = -1;
   let baseQueue = []; // session bases; empty = idle attract (random)
 
@@ -109,8 +123,33 @@
     }
   }
 
+  function nextRank(r) {
+    const i = RANKS.indexOf(r);
+    return RANKS[Math.min(RANKS.length - 1, i + 1)];
+  }
+
+  function rankLevel() {
+    return RANKS.indexOf(rank) + 1;
+  }
+
+  function parseProgressStats(progress) {
+    if (!progress || !progress.statsJson) return {};
+    try {
+      const stats = JSON.parse(progress.statsJson);
+      return stats && typeof stats === "object" ? stats : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function rankFromProgress(progress) {
+    const stats = parseProgressStats(progress);
+    return RANKS.includes(stats.rank) ? stats.rank : "C";
+  }
+
   function sessionStatsPayload() {
     return {
+      rank,
       correctCount,
       lastScore: score,
       bestScore: best
@@ -121,7 +160,7 @@
     const stats = pendingProgressStats || sessionStatsPayload();
     pendingProgressStats = stats;
     try {
-      await MathArcade.saveProgress(GAME_ID, 1, stats, options);
+      await MathArcade.saveProgress(GAME_ID, rankLevel(), stats, options);
       progressSaved = true;
       pendingProgressStats = null;
     } catch (err) {
@@ -154,7 +193,7 @@
     if (needsProgress) {
       const stats = pendingProgressStats || sessionStatsPayload();
       pendingProgressStats = stats;
-      MathArcade.saveProgress(GAME_ID, 1, stats, { keepalive: true })
+      MathArcade.saveProgress(GAME_ID, rankLevel(), stats, { keepalive: true })
         .then(() => {
           progressSaved = true;
           pendingProgressStats = null;
@@ -492,6 +531,15 @@
     noise.start(t0); noise.stop(t0 + 0.35);
   }
 
+  function playRankUp() {
+    const ac = ensureAudio();
+    if (!ac || !sfxGain) return;
+    const t = ac.currentTime;
+    [392, 523, 659, 784, 1046].forEach((f, i) => {
+      tone(sfxGain, { type: "triangle", freq: f, t: t + i * 0.09, dur: 0.28, gain: 0.2 });
+    });
+  }
+
   function playSnapTick() {
     const ac = ensureAudio();
     if (!ac || !sfxGain) return;
@@ -607,7 +655,7 @@
     const values = [answer];
     const pool = [];
     for (let v = 1; v <= 9; v++) if (v !== answer) pool.push(v);
-    while (values.length < 6 && pool.length) {
+    while (values.length < (NODES_BY_RANK[rank] || 6) && pool.length) {
       values.push(pool.splice(randInt(0, pool.length - 1), 1)[0]);
     }
 
@@ -636,7 +684,7 @@
 
     const minX = W * 0.4, maxX = W - r - 20;
     const minY = r + 20, maxY = H - r - 20;
-    const minGap = r * 2.6;
+    const minGap = r * (nodes.length > 6 ? 2.2 : 2.6);
     const placed = [];
     for (const n of nodes) {
       n.r = r;
@@ -737,6 +785,83 @@
     updateHud();
   }
 
+  function circuitLimit() {
+    return CIRCUIT_SEC[rank] || 0;
+  }
+
+  function resetCurtain() {
+    if (!timerCurtain) return;
+    timerCurtain.style.height = "0%";
+    timerCurtain.classList.remove("visible", "warn", "critical");
+  }
+
+  function hideCurtain() {
+    resetCurtain();
+    if (timerChip) timerChip.classList.remove("timer-warn", "timer-critical");
+    if (timerEl) timerEl.textContent = "–";
+    if (timerChip) timerChip.hidden = true;
+  }
+
+  function armCircuitTimer() {
+    const limit = circuitLimit();
+    circuitDuration = limit;
+    circuitDeadline = limit > 0 ? performance.now() + limit * 1000 : 0;
+    resetCurtain();
+    if (limit > 0 && timerCurtain) timerCurtain.classList.add("visible");
+    updateTimerHud();
+  }
+
+  function updateTimerHud() {
+    const limit = circuitDuration || circuitLimit();
+    if (limit <= 0 || mode !== "playing") {
+      hideCurtain();
+      return;
+    }
+
+    const left = Math.max(0, (circuitDeadline - performance.now()) / 1000);
+    const fracLeft = limit > 0 ? left / limit : 0;
+    const elapsedFrac = 1 - fracLeft;
+
+    if (timerCurtain) {
+      timerCurtain.classList.add("visible");
+      timerCurtain.style.height = `${clamp(elapsedFrac * 100, 0, 100)}%`;
+      timerCurtain.classList.toggle("warn", fracLeft <= 0.33 && fracLeft > 0.15);
+      timerCurtain.classList.toggle("critical", fracLeft <= 0.15);
+    }
+
+    if (timerChip && timerEl) {
+      timerChip.hidden = false;
+      const secs = Math.max(0, Math.ceil(left));
+      timerEl.textContent = String(secs);
+      timerChip.classList.toggle("timer-warn", fracLeft <= 0.33 && fracLeft > 0.15);
+      timerChip.classList.toggle("timer-critical", fracLeft <= 0.15);
+    }
+  }
+
+  function rankLegendHtml() {
+    return `
+      <div class="rank-legend">
+        <span><span class="rank-badge rank-C">C</span> ${RANK_FLAVOR.C}</span>
+        <span><span class="rank-badge rank-B">B</span> ${RANK_FLAVOR.B}</span>
+        <span><span class="rank-badge rank-A">A</span> ${RANK_FLAVOR.A}</span>
+        <span><span class="rank-badge rank-S">S</span> ${RANK_FLAVOR.S}</span>
+      </div>`;
+  }
+
+  function showStartOverlay() {
+    overlayTitle.textContent = "MAKE 10";
+    overlayText.textContent =
+      "A live wire hums on the left. Guide its free end to the number that adds with the base to make 10. Complete 10 circuits to rank up. Higher ranks pack the field and tighten the snap.";
+    if (overlayExtra) {
+      overlayExtra.innerHTML = `
+        <p class="stat-line">Current rank <span class="rank-badge rank-${rank}">${rank}</span></p>
+        ${rankLegendHtml()}`;
+    }
+    overlayStats.hidden = true;
+    startBtn.textContent = "Power up";
+    overlay.classList.remove("hidden");
+  }
+
   function updateHud() {
     scoreEl.textContent = score;
     circuitEl.textContent = mode === "idle" || mode === "over"
@@ -745,6 +870,11 @@
     streakEl.textContent = streak;
     bestEl.textContent = best;
     streakChip.classList.toggle("hot", streak >= 3);
+    if (rankLabel) {
+      rankLabel.textContent = rank;
+      rankLabel.className = "val rank-" + rank;
+    }
+    updateTimerHud();
   }
 
   async function startGame() {
@@ -754,6 +884,9 @@
     correctCount = 0;
     roundsPlayed = 0;
     lastBase = -1;
+    timedOut = false;
+    circuitDuration = 0;
+    circuitDeadline = 0;
     pendingProgressStats = null;
     progressSaved = false;
     sessionPersistPromise = null;
@@ -761,9 +894,11 @@
     homeBtn.classList.add("hidden");
     homeBtn.setAttribute("aria-disabled", "true");
     overlay.classList.add("hidden");
+    if (overlayExtra) overlayExtra.innerHTML = "";
     newRound();
     mode = "playing";
     modeT = 0;
+    armCircuitTimer();
     if (!pointer.seen) {
       pointer.x = W * 0.5;
       pointer.y = H * 0.5;
@@ -783,15 +918,48 @@
     if (mode === "idle" || mode === "over") return;
     stopMusic();
     mode = "over";
-    const finishedAll = correctCount >= TARGET_CORRECT;
-    overlayTitle.textContent = finishedAll ? "All circuits lit!" : "Circuit closed!";
-    overlayText.textContent = finishedAll
-      ? (streak >= 5
-        ? "You were on fire. The grid thanks you."
-        : "Ten perfect connections. Plug back in?")
-      : "Every connection makes you faster. Plug back in?";
-    overlayStats.hidden = false;
-    overlayStats.textContent = `Score ${score} · Best ${best} · ${correctCount}/${TARGET_CORRECT} circuits`;
+    hideCurtain();
+    const finishedAll = !timedOut && correctCount >= TARGET_CORRECT;
+    let rankedUp = false;
+    const oldRank = rank;
+    if (finishedAll) {
+      const nr = nextRank(rank);
+      if (nr !== rank) {
+        rank = nr;
+        rankedUp = true;
+        playRankUp();
+      }
+    } else if (rank === "S" && correctCount < 3) {
+      rank = "A";
+    }
+
+    overlayTitle.textContent = rankedUp
+      ? "Rank Up!"
+      : timedOut
+        ? "Circuit timed out!"
+        : finishedAll
+          ? "All circuits lit!"
+          : "Circuit closed!";
+    overlayText.textContent = rankedUp
+      ? `Voltage climbed from ${oldRank} to ${rank}. The grid is hungrier now.`
+      : timedOut
+        ? "The live wire went dark before you found 10. Plug back in!"
+        : finishedAll
+          ? (streak >= 5
+            ? "You were on fire. The grid thanks you."
+            : "Ten perfect connections. Plug back in?")
+          : "Every connection makes you faster. Plug back in?";
+    if (overlayExtra) {
+      overlayExtra.innerHTML = `
+        ${rankedUp ? `<div class="rank-up-banner">RANK UP! ${oldRank} → ${rank}</div>` : ""}
+        <div class="end-stats">
+          <div class="end-stat"><span class="lbl">Score</span><span class="num">${score}</span></div>
+          <div class="end-stat"><span class="lbl">Circuits</span><span class="num">${correctCount}/${TARGET_CORRECT}</span></div>
+          <div class="end-stat"><span class="lbl">Rank</span><span class="num rank-${rank}">${rank}</span></div>
+        </div>
+        ${rankLegendHtml()}`;
+    }
+    overlayStats.hidden = true;
     startBtn.textContent = "Play again";
     // Mark progress pending before any await so pagehide/navigation can still save it.
     pendingProgressStats = sessionStatsPayload();
@@ -863,7 +1031,7 @@
         const d = dist(tip.x, tip.y, n.x, n.y);
         if (d < nd) { nd = d; nearest = n; }
       }
-      const snapRange = nearest ? nearest.r + 42 : 0;
+      const snapRange = nearest ? nearest.r + (SNAP_PAD[rank] || 42) : 0;
       const newSnap = nearest && nd < snapRange ? nearest : null;
       if (newSnap && newSnap !== snapped) playSnapTick();
       snapped = newSnap;
@@ -1135,12 +1303,28 @@
         newRound();
         mode = "playing";
         modeT = 0;
+        armCircuitTimer();
       }
     }
     if (mode === "fail" && modeT >= 0.6) {
       mode = "playing";
       modeT = 0;
       lockedNode = null;
+      armCircuitTimer();
+    }
+
+    if (mode === "playing" && circuitDuration > 0) {
+      updateTimerHud();
+      if (circuitDeadline > 0 && performance.now() >= circuitDeadline) {
+        timedOut = true;
+        circuitDeadline = performance.now();
+        if (timerCurtain) {
+          timerCurtain.style.height = "100%";
+          timerCurtain.classList.add("visible", "critical");
+          timerCurtain.classList.remove("warn");
+        }
+        endGame();
+      }
     }
 
     shake = Math.max(shake - dt * 34, 0);
@@ -1211,10 +1395,14 @@
         localStorage.setItem(BEST_KEY, String(best));
         bestEl.textContent = best;
         lastSubmittedScore = best;
+        rank = rankFromProgress(progress);
       }
+      updateHud();
+      showStartOverlay();
       await backfillIdleBestReport();
     } catch (err) {
       console.error(err);
+      showStartOverlay();
     }
   })();
 

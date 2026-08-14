@@ -14,7 +14,11 @@ flowchart LR
 
 **Hosting.** ASP.NET Core 9 minimal API in [`Program.cs`](Program.cs). Static files come from `wwwroot` (`UseDefaultFiles` + `UseStaticFiles`, `Cache-Control: no-cache`). Unknown routes fall back to `index.html`.
 
-**Frontend.** Vanilla JS. The game catalog is the `GAMES` array in [`wwwroot/js/common.js`](wwwroot/js/common.js). Each game is a page under `wwwroot/games/` plus a script under `wwwroot/js/`. Shared helpers in `common.js` handle the device token, scores, progress, and daily bonus unlock.
+**Frontend.** Vanilla JS. The game catalog is the `GAMES` array in [`wwwroot/js/common.js`](wwwroot/js/common.js). Each game is a page under `wwwroot/games/` plus a script under `wwwroot/js/`. That HTML page owns its presentation in an inline `<style>` block — duplicate rank/HUD CSS rather than sharing it. Class names (`rank-badge`, `rank-C` … `rank-S`, `rank-legend`, `rank-up-banner`) may be copied; colors must stay local to the theme.
+
+[`wwwroot/js/common.js`](wwwroot/js/common.js) is the shared *contract*: catalog, device token, scores, progress, and daily bonus unlock. Do not move per-game rank knobs or `nextRank` there.
+
+Lobby uses [`wwwroot/css/site.css`](wwwroot/css/site.css). Admin uses [`wwwroot/css/admin.css`](wwwroot/css/admin.css). [`wwwroot/css/games.css`](wwwroot/css/games.css) is an unused generic `game-page` shell. Do not link it from full-screen games and do not grow it with rank or HUD skins.
 
 **Backend.** All HTTP endpoints live in [`Program.cs`](Program.cs). Entities are in [`Models/`](Models/). EF Core SQLite is configured in [`Data/AppDbContext.cs`](Data/AppDbContext.cs). The database is created with `EnsureCreated()` on startup (no migrations).
 
@@ -27,6 +31,8 @@ flowchart LR
 | `Player` | Display name and device token |
 | `HighScore` | One best score per player per game |
 | `GameProgress` | `DifficultyLevel` plus a `StatsJson` blob |
+
+Math games use C→S ranks. Persist `stats.rank` (`"C"|"B"|"A"|"S"`) in `StatsJson` and `DifficultyLevel` 1–4 (`RANKS.indexOf(rank) + 1`). Rank-up knobs (timers, grid size, factors) stay in that game's JS. If `stats.rank` is missing, start at C — do not map leftover numeric `difficultyLevel` values into B/A/S. A saved session (any `saveProgress` that updates `updatedAt`) is what counts for the daily bonus, not a rank-up.
 
 ### API
 
@@ -75,12 +81,12 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 
 **Dino Dash** unlocks after a saved session in every catalog math game today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `null`, which means all of them. Set it to a number (for example `5`) to lower the bar as the catalog grows.
 
-To add a game: append an entry to `GAMES`, then add matching HTML under `wwwroot/games/` and JS under `wwwroot/js/`. Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
+To add a game: append an entry to `GAMES`, then add matching HTML under `wwwroot/games/` and JS under `wwwroot/js/`. If the game uses C→S ranks, copy the rank class names, inline and theme the CSS in that HTML, and save `stats.rank` like Calendar Scramble. Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
 
 ## Features
 
 - **Lobby** at `/` — activity list, how-to, high scores, and player name
-- **Progress** — per-game difficulty and stats saved to SQLite
+- **Progress** — per-game C→S rank (`stats.rank`) and stats saved to SQLite
 - **Daily bonus** — lobby shows lock status until today's catalog sessions are done
 - **Admin** at `/admin.html` — wipe a leaderboard or delete a single score
 

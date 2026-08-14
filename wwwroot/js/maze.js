@@ -1,6 +1,10 @@
 /* Galaxy Maze — space explorer multiplication maze */
 (function () {
   const GAME_ID = "maze";
+  const RANKS = ["C", "B", "A", "S"];
+  const RANK_FLAVOR = { C: "scout", B: "navigator", A: "captain", S: "admiral" };
+  const FACTOR_MAX = { C: 5, B: 8, A: 10, S: 12 };
+  const DISTRACTORS = { C: 2, B: 2, A: 3, S: 3 };
 
   // ------------------------------------------------------------- DOM ----
   const stage = document.getElementById("stage");
@@ -12,7 +16,8 @@
   const flashEl = document.getElementById("flash");
   const scoreEl = document.getElementById("score");
   const jumpEl = document.getElementById("jump");
-  const levelEl = document.getElementById("level");
+  const rankLabel = document.getElementById("rank-label");
+  const overlayExtra = document.getElementById("overlay-extra");
   const navLabel = document.getElementById("nav-label");
   const navProblem = document.getElementById("nav-problem");
   const navMsg = document.getElementById("nav-msg");
@@ -21,7 +26,7 @@
   const startBtn = document.getElementById("start-btn");
 
   // ----------------------------------------------------------- state ----
-  let difficulty = 1;
+  let rank = "C";
   let score = 0;
   let stepIndex = 0;       // how many jumps completed
   let totalJumps = 0;      // length of solution walk
@@ -72,6 +77,40 @@
     const dx = (nodes[i].x - nodes[j].x) * ASPECT;
     const dy = nodes[i].y - nodes[j].y;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function nextRank(r) {
+    const i = RANKS.indexOf(r);
+    return RANKS[Math.min(RANKS.length - 1, i + 1)];
+  }
+
+  function rankLevel() {
+    return RANKS.indexOf(rank) + 1;
+  }
+
+  function rankFromProgress(progress) {
+    let stats = {};
+    if (progress && progress.statsJson) {
+      try { stats = JSON.parse(progress.statsJson); } catch (_) { stats = {}; }
+    }
+    return RANKS.includes(stats.rank) ? stats.rank : "C";
+  }
+
+  function rankLegendHtml() {
+    return `
+      <div class="rank-legend">
+        <span><span class="rank-badge rank-C">C</span> ${RANK_FLAVOR.C}</span>
+        <span><span class="rank-badge rank-B">B</span> ${RANK_FLAVOR.B}</span>
+        <span><span class="rank-badge rank-A">A</span> ${RANK_FLAVOR.A}</span>
+        <span><span class="rank-badge rank-S">S</span> ${RANK_FLAVOR.S}</span>
+      </div>`;
+  }
+
+  function paintStartOverlay() {
+    if (!overlayExtra) return;
+    overlayExtra.innerHTML = `
+      <p class="sub">Current rank <span class="rank-badge rank-${rank}">${rank}</span></p>
+      ${rankLegendHtml()}`;
   }
 
   function midiToFreq(n) {
@@ -286,6 +325,14 @@
     tone(sfxGain, { type: "sine", freq: midiToFreq(40), t: t + 0.75, dur: 1.3, gain: 0.25, attack: 0.05 });
   }
 
+  function playRankUp() {
+    if (!ensureAudio() || !sfxGain) return;
+    const t = audio.currentTime;
+    [392, 523, 659, 784, 1046].forEach((f, i) => {
+      tone(sfxGain, { type: "triangle", freq: f, t: t + i * 0.09, dur: 0.28, gain: 0.2 });
+    });
+  }
+
   // =================================================================
   // STARFIELD BACKDROP
   // =================================================================
@@ -438,10 +485,7 @@
   }
 
   function factorMax() {
-    if (difficulty <= 2) return 5;
-    if (difficulty <= 4) return 8;
-    if (difficulty <= 6) return 10;
-    return 12;
+    return FACTOR_MAX[rank] || 5;
   }
 
   function buildProblems() {
@@ -528,7 +572,10 @@
   function updateHud() {
     scoreEl.textContent = score;
     jumpEl.textContent = totalJumps ? `${stepIndex}/${totalJumps}` : "–";
-    levelEl.textContent = difficulty;
+    if (rankLabel) {
+      rankLabel.textContent = rank;
+      rankLabel.className = "val rank-" + rank;
+    }
   }
 
   function setMsg(text, cls) {
@@ -613,9 +660,12 @@
     nodeEls[cur].classList.add("current");
 
     const neighbors = [...adj[cur]];
-    const distractors = makeDistractors(prob.a, prob.b, neighbors.length - 1);
+    const others = shuffle(neighbors.filter((n) => n !== next));
+    const maxD = Math.min(DISTRACTORS[rank] || 2, others.length);
+    const shown = [next, ...others.slice(0, maxD)];
+    const distractors = makeDistractors(prob.a, prob.b, maxD);
     let d = 0;
-    shuffle(neighbors).forEach((nb, i) => {
+    shuffle(shown).forEach((nb, i) => {
       const value = nb === next ? prob.correct : distractors[d++];
       const el = nodeEls[nb];
       el.classList.add("selectable");
@@ -640,6 +690,7 @@
     if (state !== "choosing") return;
     const cur = walk[stepIndex];
     if (!adj[cur].has(i)) return;
+    if (!nodeEls[i] || !nodeEls[i].classList.contains("selectable")) return;
     if (i === walk[stepIndex + 1]) {
       correctPick(i);
     } else {
@@ -650,7 +701,7 @@
   function correctPick(dest) {
     state = "flying";
     const cur = walk[stepIndex];
-    const pts = 15 + difficulty * 3;
+    const pts = 15 + rankLevel() * 8;
     score += pts;
     updateHud();
 
@@ -755,7 +806,7 @@
   async function victory(dest) {
     state = "over";
     const star = nodes[dest];
-    const bonus = 50 + difficulty * 5;
+    const bonus = 50 + rankLevel() * 12;
     score += bonus;
     stopMusic();
     playFanfare();
@@ -773,22 +824,37 @@
     setMsg("Incredible — the signal was real!", "good");
     updateHud();
 
-    const nextDifficulty = Math.min(12, difficulty + 1);
+    const oldRank = rank;
+    const nr = nextRank(rank);
+    const rankedUp = nr !== rank;
+    if (rankedUp) {
+      rank = nr;
+      playRankUp();
+    }
     try {
       await MathArcade.submitScore(GAME_ID, score);
-      await MathArcade.saveProgress(GAME_ID, nextDifficulty, { lastWon: true, jumps: totalJumps });
+      await MathArcade.saveProgress(GAME_ID, rankLevel(), {
+        rank,
+        lastWon: true,
+        jumps: totalJumps
+      });
     } catch (err) {
       console.error(err);
     }
-    difficulty = nextDifficulty;
 
     setTimeout(() => {
       overlayCard.innerHTML = `
         <span class="big-emoji">🪐</span>
-        <h2>Life discovered!</h2>
+        <h2>${rankedUp ? "Rank Up!" : "Life discovered!"}</h2>
         <p>Your scanners found a living world orbiting <strong>${star.name}</strong> —
            welcome to planet <strong>${star.name} b</strong>! 🌱👽</p>
-        <p class="sub">Mission score: <strong>${score}</strong> · ${totalJumps} hyperspace jumps · next mission level: ${difficulty}</p>
+        ${rankedUp ? `<div class="rank-up-banner">RANK UP! ${oldRank} → ${rank}</div>` : ""}
+        <div class="end-stats">
+          <div class="end-stat"><span class="lbl">Score</span><span class="num">${score}</span></div>
+          <div class="end-stat"><span class="lbl">Jumps</span><span class="num">${totalJumps}</span></div>
+          <div class="end-stat"><span class="lbl">Rank</span><span class="num rank-${rank}">${rank}</span></div>
+        </div>
+        ${rankLegendHtml()}
         <button class="btn-primary" id="again-btn">🚀 New mission</button>`;
       overlay.classList.remove("hidden");
       document.getElementById("again-btn").addEventListener("click", startGame);
@@ -801,10 +867,10 @@
     try {
       await MathArcade.ensurePlayer();
       const progress = await MathArcade.loadProgress(GAME_ID);
-      difficulty = progress.difficultyLevel || 1;
+      rank = rankFromProgress(progress);
     } catch (err) {
       console.error(err);
-      difficulty = difficulty || 1;
+      rank = rank || "C";
     }
 
     score = 0;
@@ -828,4 +894,12 @@
 
   initStarfield();
   startBtn.addEventListener("click", startGame);
+  (async () => {
+    try {
+      await MathArcade.ensurePlayer();
+      rank = rankFromProgress(await MathArcade.loadProgress(GAME_ID));
+    } catch (_) { /* start at C */ }
+    updateHud();
+    paintStartOverlay();
+  })();
 })();

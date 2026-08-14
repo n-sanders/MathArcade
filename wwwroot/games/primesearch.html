@@ -183,6 +183,11 @@
       font-size: 1rem;
     }
 
+    .hud-value.rank-C { color: #c8c8d0; }
+    .hud-value.rank-B { color: #7dffa8; }
+    .hud-value.rank-A { color: #9ec5ff; }
+    .hud-value.rank-S { color: var(--gold); }
+
     .sound-button {
       cursor: pointer;
       color: var(--cyan-bright);
@@ -853,6 +858,113 @@
       font-weight: 700;
     }
 
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+
+    .rank-C { background: rgba(140, 140, 150, 0.25); color: #c8c8d0; border-color: rgba(180, 180, 190, 0.4); }
+    .rank-B { background: rgba(80, 180, 120, 0.2); color: #7dffa8; border-color: rgba(80, 220, 140, 0.45); }
+    .rank-A { background: rgba(80, 140, 255, 0.22); color: #9ec5ff; border-color: rgba(100, 160, 255, 0.5); }
+    .rank-S {
+      background: linear-gradient(135deg, rgba(255, 209, 102, 0.3), rgba(101, 230, 255, 0.28));
+      color: var(--gold);
+      border-color: rgba(255, 209, 102, 0.65);
+      box-shadow: 0 0 12px rgba(255, 209, 102, 0.4);
+      animation: sGlow 1.8s ease-in-out infinite;
+    }
+
+    @keyframes sGlow {
+      50% { box-shadow: 0 0 20px rgba(255, 209, 102, 0.7); }
+    }
+
+    .rank-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem 0.75rem;
+      margin: 0.35rem auto;
+      font-size: 0.78rem;
+      color: var(--muted);
+      max-width: 42ch;
+    }
+
+    .rank-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    .rank-up-banner {
+      margin: 0.35rem auto;
+      padding: 0.55rem 0.95rem;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(255, 209, 102, 0.15), rgba(101, 230, 255, 0.2));
+      border: 1px solid rgba(255, 209, 102, 0.45);
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--gold);
+      animation: rankPop 0.6s ease;
+    }
+
+    @keyframes rankPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    #overlay-extra {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
+    }
+
+    .end-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.5rem auto;
+    }
+
+    .end-stat {
+      background: rgba(255, 209, 102, 0.08);
+      border: 1px solid rgba(255, 209, 102, 0.25);
+      border-radius: 12px;
+      padding: 0.55rem 0.9rem;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    .end-stat .lbl {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .end-stat .num {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .end-stat .num.rank-C { color: #c8c8d0; }
+    .end-stat .num.rank-B { color: #7dffa8; }
+    .end-stat .num.rank-A { color: #9ec5ff; }
+    .end-stat .num.rank-S { color: var(--gold); }
+
     .primary-button {
       min-width: 170px;
       margin-top: 1.35rem;
@@ -1145,9 +1257,9 @@
         <span class="hud-label">Found</span>
         <span class="hud-value" id="found">0/3</span>
       </div>
-      <div class="hud-chip" id="level-chip">
-        <span class="hud-label">Level</span>
-        <span class="hud-value" id="level">1</span>
+      <div class="hud-chip" id="rank-chip">
+        <span class="hud-label">Rank</span>
+        <span class="hud-value rank-C" id="rank-label">C</span>
       </div>
       <button class="sound-button" id="sound-toggle" type="button" aria-pressed="false" aria-label="Mute sound">
         <span class="sound-icon" id="sound-icon" aria-hidden="true">♪</span>
@@ -1203,8 +1315,9 @@
           <p class="overlay-kicker" id="overlay-kicker">Night mission</p>
           <h2 id="overlay-title">Prime Search</h2>
           <p class="overlay-copy" id="overlay-copy">
-            Memorize three primes, then start when you are ready. Sweep the board with your flashlight and find every target.
+            Memorize three primes, then start when you are ready. Sweep the board with your flashlight and find every target. Clear a hunt to rank up — higher ranks grow the field.
           </p>
+          <div id="overlay-extra"></div>
           <p class="overlay-stats" id="overlay-stats" hidden></p>
           <button class="primary-button" id="start-btn" type="button">Start the hunt</button>
         </div>
