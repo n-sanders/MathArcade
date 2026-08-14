@@ -85,7 +85,7 @@ To add a game: append an entry to `GAMES`, then add matching HTML under `wwwroot
 
 ## Features
 
-- **Lobby** at `/` — activity list, how-to, high scores, and player name
+- **Lobby** at `/` — activity list with personal C→S ranks, how-to, high scores, and player name
 - **Progress** — per-game C→S rank (`stats.rank`) and stats saved to SQLite
 - **Daily bonus** — lobby shows lock status until today's catalog sessions are done
 - **Admin** at `/admin.html` — wipe a leaderboard or delete a single score
