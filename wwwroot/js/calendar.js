@@ -1,4 +1,4 @@
-/* Calendar Scramble — drag the scattered months back into the ordinal stack.
+/* Calendar Scramble — click or drag the scattered months back into the ordinal stack.
  * C/B/A/S ranks: short 3-round runs with more months missing at higher ranks.
  * A falling curtain drains the field; clear all three rounds to rank up.
  */
@@ -39,6 +39,7 @@
     A: "nearly empty",
     S: "full scramble"
   };
+  const DRAG_THRESHOLD = 12;
 
   const BURST_COLORS = ["#fde047", "#fbbf24", "#fb923c", "#6ee7a0", "#7dd3fc", "#ffffff"];
 
@@ -85,7 +86,8 @@
 
   let slots = [];           // 12 of { idx, rowEl, slotEl, filled, rect }
   let tiles = [];           // active field tiles { el, inner, monthIdx, homeX, homeY }
-  let drag = null;          // { tile, dx, dy, pointerId }
+  let drag = null;          // { tile, dx, dy, pointerId, startX, startY, moved, wasHeld }
+  let held = null;          // tile picked by click, waiting for a slot tap
   let stageRect = null;
   let roundTasks = [];
 
@@ -688,7 +690,7 @@
 
   // --------------------------------------------------------------- rounds --
   function buildRound() {
-    clearHighlights();
+    clearPick();
     const schedule = MISSING_BY_RANK[rank] || MISSING_BY_RANK.C;
     missingCount = schedule[roundIndex] || schedule[schedule.length - 1];
     roundMistakes = 0;
@@ -762,11 +764,41 @@
     return bestSlot;
   }
 
+  function slotFromEvent(e) {
+    const row = e.target.closest && e.target.closest(".slot-row");
+    if (!row) return null;
+    const slot = slots.find((s) => s.rowEl === row);
+    return slot && !slot.filled ? slot : null;
+  }
+
   function clearHighlights() {
     for (const s of slots) {
       s.slotEl.classList.remove("hot");
       s.rowEl.classList.remove("hot");
     }
+  }
+
+  function setPicking(on) {
+    stage.classList.toggle("picking", on);
+  }
+
+  function unpickTile(tile) {
+    if (!tile) return;
+    tile.el.classList.remove("dragging", "held");
+  }
+
+  function clearPick() {
+    if (held) unpickTile(held);
+    held = null;
+    setPicking(false);
+    clearHighlights();
+  }
+
+  function tryPlace(tile, target) {
+    if (!target) return false;
+    if (target.idx === tile.monthIdx) lockTile(tile, target);
+    else wrongDrop(tile, target);
+    return true;
   }
 
   function highlightSlot(target) {
@@ -778,7 +810,7 @@
   }
 
   function onTileDown(e, tile) {
-    if (mode !== "playing" || drag) return;
+    if (mode !== "playing" || drag || !e.isPrimary) return;
     computeStageRect();
 
     // If the tile is mid-return, freeze it where it currently is.
@@ -789,24 +821,45 @@
       tile.el.style.top = cs.top;
     }
 
+    const clickingHeld = held === tile;
+    if (held && !clickingHeld) {
+      unpickTile(held);
+      held = null;
+      setPicking(false);
+      clearHighlights();
+    }
+
     const p = toStage(e);
     drag = {
       tile,
       pointerId: e.pointerId,
       dx: p.x - parseFloat(tile.el.style.left),
-      dy: p.y - parseFloat(tile.el.style.top)
+      dy: p.y - parseFloat(tile.el.style.top),
+      startX: p.x,
+      startY: p.y,
+      moved: false,
+      wasHeld: clickingHeld
     };
     try {
       tile.el.setPointerCapture(e.pointerId);
     } catch (_) { /* synthetic or already-released pointer */ }
     tile.el.classList.add("dragging");
-    playPickup();
+    if (!clickingHeld) playPickup();
   }
 
   function onTileMove(e) {
     if (!drag || e.pointerId !== drag.pointerId) return;
-    const { tile } = drag;
     const p = toStage(e);
+    if (!drag.moved) {
+      if (Math.hypot(p.x - drag.startX, p.y - drag.startY) < DRAG_THRESHOLD) return;
+      drag.moved = true;
+      if (held === drag.tile) {
+        held = null;
+        setPicking(false);
+      }
+      drag.tile.el.classList.remove("held");
+    }
+    const { tile } = drag;
     const w = tile.el.offsetWidth;
     const h = tile.el.offsetHeight;
     const x = clamp(p.x - drag.dx, 0, stageRect.width - w);
@@ -818,9 +871,36 @@
 
   function onTileUp(e) {
     if (!drag || e.pointerId !== drag.pointerId) return;
-    const { tile } = drag;
+    const { tile, moved, wasHeld } = drag;
     drag = null;
-    tile.el.classList.remove("dragging");
+
+    if (e.type === "pointercancel") {
+      held = null;
+      unpickTile(tile);
+      setPicking(false);
+      clearHighlights();
+      returnHome(tile);
+      return;
+    }
+
+    if (!moved) {
+      if (wasHeld) {
+        // Second click on the same month puts it down.
+        held = null;
+        unpickTile(tile);
+        setPicking(false);
+        clearHighlights();
+        return;
+      }
+      held = tile;
+      tile.el.classList.add("dragging", "held");
+      setPicking(true);
+      return;
+    }
+
+    unpickTile(tile);
+    held = null;
+    setPicking(false);
     clearHighlights();
 
     if (mode !== "playing") {
@@ -830,13 +910,39 @@
 
     const p = toStage(e);
     const target = findTargetSlot(p.x, p.y);
+    if (!tryPlace(tile, target)) returnHome(tile);
+  }
+
+  function onStageDown(e) {
+    if (mode !== "playing" || !held || drag || !e.isPrimary) return;
+    if (e.target.closest(".tile")) return;
+
+    const tile = held;
+    const target = slotFromEvent(e);
     if (!target) {
-      returnHome(tile);
-    } else if (target.idx === tile.monthIdx) {
-      lockTile(tile, target);
-    } else {
-      wrongDrop(tile, target);
+      // Clicked a filled row: keep the month; anywhere else: put it down.
+      if (e.target.closest(".slot-row")) return;
+      clearPick();
+      return;
     }
+
+    held = null;
+    unpickTile(tile);
+    setPicking(false);
+    clearHighlights();
+    tryPlace(tile, target);
+  }
+
+  function onStageMove(e) {
+    if (mode !== "playing" || !held || drag) return;
+    computeStageRect();
+    const fromRow = slotFromEvent(e);
+    if (fromRow) {
+      highlightSlot(fromRow);
+      return;
+    }
+    const p = toStage(e);
+    highlightSlot(findTargetSlot(p.x, p.y));
   }
 
   function returnHome(tile) {
@@ -929,7 +1035,7 @@
   function showStartOverlay() {
     overlayTitle.textContent = "CALENDAR SCRAMBLE";
     overlayText.textContent =
-      "Drag each missing month to its ordinal slot — 1st through 12th. Clear three rounds before the curtain falls to rank up. Higher ranks leave fewer months filled in.";
+      "Click a month, then click its ordinal slot — or drag it there. Clear three rounds before the curtain falls to rank up. Higher ranks leave fewer months filled in.";
     overlayExtra.innerHTML = `
       <p class="stat-line">Current rank <span class="rank-badge rank-${rank}">${rank}</span></p>
       ${rankLegendHtml()}`;
@@ -951,6 +1057,7 @@
     totalPlaced = 0;
     timedOut = false;
     drag = null;
+    clearPick();
     overlay.classList.add("hidden");
     overlayExtra.innerHTML = "";
     buildRound();
@@ -975,6 +1082,7 @@
     stopMusic();
     mode = "over";
     drag = null;
+    clearPick();
 
     let rankedUp = false;
     const oldRank = rank;
@@ -1059,6 +1167,8 @@
     timedOut = false;
     finishGame(false);
   });
+  stage.addEventListener("pointerdown", onStageDown);
+  stage.addEventListener("pointermove", onStageMove);
 
   window.addEventListener("resize", () => {
     requestAnimationFrame(() => {
