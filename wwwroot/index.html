@@ -36,9 +36,12 @@
           <span id="preview-howto">—</span>
         </div>
         <p class="bonus-status" id="preview-bonus-status" hidden></p>
-        <div class="scores">
-          <h3>High scores</h3>
-          <ul id="preview-scores"></ul>
+        <div class="preview-meta">
+          <div class="your-rank" id="preview-rank" hidden></div>
+          <div class="scores">
+            <h3>High scores</h3>
+            <ul id="preview-scores"></ul>
+          </div>
         </div>
         <a class="launch" id="preview-launch" href="#">Launch</a>
       </section>
@@ -50,12 +53,14 @@
     (function () {
       const {
         GAMES,
+        RANKS,
         getPlayerName,
         setPlayerName,
         ensurePlayer,
         loadTopScores,
         loadAllProgress,
         getDailyBonusUnlockStatus,
+        getGameRankSummary,
         formatActivityList,
         formatScore
       } = MathArcade;
@@ -65,6 +70,7 @@
       const blurbEl = document.getElementById("preview-blurb");
       const howtoEl = document.getElementById("preview-howto");
       const bonusStatusEl = document.getElementById("preview-bonus-status");
+      const rankEl = document.getElementById("preview-rank");
       const scoresEl = document.getElementById("preview-scores");
       const launchEl = document.getElementById("preview-launch");
       const nameInput = document.getElementById("player-name");
@@ -72,6 +78,7 @@
 
       let selectedId = GAMES.find((g) => !g.bonus)?.id || GAMES[0].id;
       let unlockStatus = getDailyBonusUnlockStatus({});
+      let progressByGameId = {};
 
       nameInput.value = getPlayerName();
 
@@ -95,7 +102,10 @@
         btn.dataset.id = game.id;
         if (game.bonus) btn.classList.add("bonus");
         btn.innerHTML =
-          `<span class="title">${escapeHtml(game.title)}</span>` +
+          `<span class="title-row">` +
+            `<span class="title">${escapeHtml(game.title)}</span>` +
+            `<span class="rank-slot" data-rank-slot></span>` +
+          `</span>` +
           `<span class="hint">${escapeHtml(game.blurb)}</span>` +
           (game.bonus ? `<span class="lock-badge" data-lock-badge hidden></span>` : "");
         btn.addEventListener("click", () => selectGame(game.id));
@@ -137,6 +147,84 @@
         }
       }
 
+      function rankBadgeHtml(rank, extraClass) {
+        const letter = escapeHtml(rank);
+        const cls = extraClass ? ` ${extraClass}` : "";
+        return `<span class="rank-badge rank-${letter}${cls}">${letter}</span>`;
+      }
+
+      function rankLegendHtml() {
+        return `<div class="rank-legend">${RANKS.map((r) => rankBadgeHtml(r)).join("")}</div>`;
+      }
+
+      function listRankHtml(summary) {
+        if (!summary.played) return "";
+        if (summary.rankMode === "single") {
+          return rankBadgeHtml(summary.rank);
+        }
+        if (summary.rankMode === "perNumber") {
+          const cells = Object.keys(summary.ranks)
+            .sort((a, b) => Number(a) - Number(b))
+            .map((n) => {
+              const r = summary.ranks[n];
+              return `<span class="rank-strip-cell" title="×${escapeHtml(n)} ${escapeHtml(r)}">` +
+                `<span class="rank-strip-n">${escapeHtml(n)}</span>` +
+                rankBadgeHtml(r, "rank-badge--mini") +
+                `</span>`;
+            })
+            .join("");
+          return `<span class="rank-strip" aria-label="Rank for each number">${cells}</span>`;
+        }
+        return "";
+      }
+
+      function previewRankHtml(game, summary) {
+        if (!game || game.rankMode === "none") return "";
+        if (!summary.played) {
+          return `<h3>Your rank</h3><p class="your-rank-empty">Play to earn a rank</p>`;
+        }
+        if (summary.rankMode === "single") {
+          return `<h3>Your rank</h3>` +
+            `<div class="your-rank-single">` +
+              rankBadgeHtml(summary.rank, "rank-badge--lg") +
+              rankLegendHtml() +
+            `</div>`;
+        }
+        if (summary.rankMode === "perNumber") {
+          const cells = Object.keys(summary.ranks)
+            .sort((a, b) => Number(a) - Number(b))
+            .map((n) => {
+              const r = summary.ranks[n];
+              return `<span class="rank-grid-cell">` +
+                `<span class="rank-grid-n">×${escapeHtml(n)}</span>` +
+                rankBadgeHtml(r) +
+                `</span>`;
+            })
+            .join("");
+          return `<h3>Your ranks</h3>` +
+            `<div class="rank-grid">${cells}</div>` +
+            rankLegendHtml();
+        }
+        return "";
+      }
+
+      function applyRankUi() {
+        listEl.querySelectorAll(".activity-btn").forEach((btn) => {
+          const game = GAMES.find((g) => g.id === btn.dataset.id);
+          const slot = btn.querySelector("[data-rank-slot]");
+          if (!game || !slot) return;
+          slot.innerHTML = listRankHtml(getGameRankSummary(game, progressByGameId[game.id]));
+        });
+      }
+
+      function updatePreviewRank(id) {
+        const game = GAMES.find((g) => g.id === id);
+        if (!game || !rankEl) return;
+        const html = previewRankHtml(game, getGameRankSummary(game, progressByGameId[game.id]));
+        rankEl.innerHTML = html;
+        rankEl.hidden = !html;
+      }
+
       function updatePreviewForSelection(id) {
         const game = GAMES.find((g) => g.id === id);
         if (!game) return;
@@ -169,15 +257,19 @@
           launchEl.textContent = "Launch";
           launchEl.onclick = null;
         }
+
+        updatePreviewRank(id);
       }
 
       async function refreshUnlockStatus() {
         try {
-          const progressByGameId = await loadAllProgress();
+          progressByGameId = await loadAllProgress();
           unlockStatus = getDailyBonusUnlockStatus(progressByGameId);
         } catch {
+          progressByGameId = {};
           unlockStatus = getDailyBonusUnlockStatus({});
         }
+        applyRankUi();
         applyUnlockUi();
       }
 
