@@ -81,11 +81,11 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 
 **Dino Dash** unlocks after a saved session in every catalog math game today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `null`, which means all of them. Set it to a number (for example `5`) to lower the bar as the catalog grows.
 
-To add a game: append an entry to `GAMES`, then add matching HTML under `wwwroot/games/` and JS under `wwwroot/js/`. If the game uses C→S ranks, copy the rank class names, inline and theme the CSS in that HTML, and save `stats.rank` like Calendar Scramble. Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
+To add a game: append an entry to `GAMES` with a `topic` (`addition`, `subtraction`, `multiplication`, `division`, `other`, or `bonus`), then add matching HTML under `wwwroot/games/` and JS under `wwwroot/js/`. If the game uses C→S ranks, copy the rank class names, inline and theme the CSS in that HTML, and save `stats.rank` like Calendar Scramble. Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
 
 ## Features
 
-- **Lobby** at `/` — activity list with personal C→S ranks, how-to, high scores, and player name
+- **Lobby** at `/` — skill spider charts, topic picker, and a filtered activity list with personal C→S ranks, how-to, high scores, and player name
 - **Progress** — per-game C→S rank (`stats.rank`) and stats saved to SQLite
 - **Daily bonus** — lobby shows lock status until today's catalog sessions are done
 - **Admin** at `/admin.html` — wipe a leaderboard or delete a single score

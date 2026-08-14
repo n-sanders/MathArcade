@@ -3,27 +3,30 @@
   const TOKEN_KEY = "matharcade_device_token";
   const NAME_KEY = "matharcade_player_name";
 
+  const TOPICS = [
+    { id: "addition", label: "Addition" },
+    { id: "subtraction", label: "Subtraction" },
+    { id: "multiplication", label: "Multiplication" },
+    { id: "division", label: "Division", comingSoon: true },
+    { id: "other", label: "Other" },
+    { id: "bonus", label: "Bonus", bonus: true }
+  ];
+
   const GAMES = [
     {
       id: "make10",
       title: "Make 10",
       path: "/games/make10.html",
+      topic: "addition",
       blurb: "Drag a live electric wire to the number that completes 10. Climb C→S voltage ranks!",
       howTo: "A glowing wire is anchored to the base number. Guide its free end to the number that adds with the base to make 10, then click or release to connect. Correct circuits spark and boost your streak; wrong ones fizzle. Complete 10 circuits to rank up (C→B→A→S). Higher ranks pack the field with more decoys, tighten the snap, and add a per-circuit timer at A and S.",
-      rankMode: "single"
-    },
-    {
-      id: "maze",
-      title: "Galaxy Maze",
-      path: "/games/maze.html",
-      blurb: "Pilot a starship from Sol and follow a signal of alien life. Climb C→S navigation ranks!",
-      howTo: "Each hyperspace jump needs a multiplication answer. Pick the neighboring star showing the correct product to launch, scan each system for life, and find the living world 10-15 jumps out. Completing a mission ranks you up (C→B→A→S); higher ranks use bigger factors and more decoy products.",
       rankMode: "single"
     },
     {
       id: "skipcounting",
       title: "Lava Leap",
       path: "/games/skipcounting.html",
+      topic: "addition",
       blurb: "Skip-count platform to platform and outrun the rising lava!",
       howTo: "Pick a number 2–10, then tap the platform showing the next skip-count number to leap there. Each number has its own rank (C→S) that speeds up the lava. Reach ×12 to escape!",
       rankMode: "perNumber"
@@ -32,30 +35,43 @@
       id: "avalanche",
       title: "Avalanche Run",
       path: "/games/avalanche.html",
+      topic: "subtraction",
       blurb: "Skip-count down the mountain and outrun the avalanche!",
       howTo: "Pick a number 2–10, then tap the platform showing the next countdown number to hop down from ×12 all the way to 0. Each number has its own rank (C→S) that speeds up the avalanche. Reach 0 to escape!",
       rankMode: "perNumber"
     },
     {
-      id: "primesearch",
-      title: "Prime Search",
-      path: "/games/primesearch.html",
-      blurb: "Memorize three primes, then hunt them with your flashlight. Climb C→S ranks as the field grows!",
-      howTo: "Study the primes, then move your mouse to light the dark number field and click each target. Find all three to rank up (C→B→A→S). Higher ranks use a bigger board and larger numbers. Open Mission targets any time you need a reminder.",
+      id: "maze",
+      title: "Galaxy Maze",
+      path: "/games/maze.html",
+      topic: "multiplication",
+      blurb: "Pilot a starship from Sol and follow a signal of alien life. Climb C→S navigation ranks!",
+      howTo: "Each hyperspace jump needs a multiplication answer. Pick the neighboring star showing the correct product to launch, scan each system for life, and find the living world 10-15 jumps out. Completing a mission ranks you up (C→B→A→S); higher ranks use bigger factors and more decoy products.",
       rankMode: "single"
     },
     {
       id: "calendar",
       title: "Calendar Scramble",
       path: "/games/calendar.html",
+      topic: "other",
       blurb: "Drag scattered months back into order before the curtain falls. Climb C→S ranks — S starts with a fully empty year!",
       howTo: "The year stacks on the left with some months missing. Drag each missing month to its ordinal slot (1st–12th). Clear three rounds before the falling curtain covers the field to rank up (C→B→A→S). Higher ranks leave fewer months filled in; S starts empty every round. Fast placements score more; wrong slots cost 5.",
+      rankMode: "single"
+    },
+    {
+      id: "primesearch",
+      title: "Prime Search",
+      path: "/games/primesearch.html",
+      topic: "other",
+      blurb: "Memorize three primes, then hunt them with your flashlight. Climb C→S ranks as the field grows!",
+      howTo: "Study the primes, then move your mouse to light the dark number field and click each target. Find all three to rank up (C→B→A→S). Higher ranks use a bigger board and larger numbers. Open Mission targets any time you need a reminder.",
       rankMode: "single"
     },
     {
       id: "memorymatch",
       title: "Memory Match Math",
       path: "/games/memorymatch.html",
+      topic: "other",
       blurb: "Match math problems with their answers as the colorful card board grows. Climb C→S ranks!",
       howTo: "Flip two cards at a time and pair each expression with its answer. Every match earns points and a celebration. Clear each board to grow from 8 to 24 cards; misses simply flip back with no penalty. Clear a 24-card board to rank up (C→B→A→S). Higher ranks mix in subtraction and multiplication with bigger numbers.",
       rankMode: "single"
@@ -64,6 +80,7 @@
       id: "bonus",
       title: "Dino Dash",
       path: "/games/bonus.html",
+      topic: "bonus",
       blurb: "Daily bonus: an endless runner — jump the cacti, duck the birds, outlast the speed-up!",
       howTo: "Complete a saved session in each activity today to unlock this bonus, then come back tomorrow and do it again! In the run: Space/↑/tap to jump, ↓ or hold DUCK to slide under birds. The canyon keeps speeding up and your score is simply how long you survive.",
       bonus: true,
@@ -80,6 +97,18 @@
 
   function getCatalogGames() {
     return GAMES.filter((g) => !g.bonus);
+  }
+
+  function getTopic(topicId) {
+    return TOPICS.find((t) => t.id === topicId) || null;
+  }
+
+  function getRadarTopics() {
+    return TOPICS.filter((t) => !t.bonus);
+  }
+
+  function getGamesForTopic(topicId) {
+    return GAMES.filter((g) => g.topic === topicId);
   }
 
   function getDailyBonusRequiredCount() {
@@ -485,8 +514,12 @@
 
   global.MathArcade = {
     GAMES,
+    TOPICS,
     DAILY_BONUS_REQUIRED_COUNT,
     getCatalogGames,
+    getTopic,
+    getRadarTopics,
+    getGamesForTopic,
     getDailyBonusRequiredCount,
     isProgressFromLocalToday,
     getDailyBonusUnlockStatus,
