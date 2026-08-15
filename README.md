@@ -34,6 +34,8 @@ Lobby uses [`wwwroot/css/site.css`](wwwroot/css/site.css). Admin uses [`wwwroot/
 
 Math games use C→S ranks. Persist `stats.rank` (`"C"|"B"|"A"|"S"`) in `StatsJson` and `DifficultyLevel` 1–4 (`RANKS.indexOf(rank) + 1`). Rank-up knobs (timers, grid size, factors) stay in that game's JS. If `stats.rank` is missing, start at C — do not map leftover numeric `difficultyLevel` values into B/A/S. A saved session (any `saveProgress` that updates `updatedAt`) is what counts for the daily bonus, not a rank-up.
 
+**Skill radar.** Each non-bonus topic is a pentagon with five axes. Each axis is one catalog game (`axisIndex` 0–4, unique within the topic). Unused spokes stay **Coming soon** at score 0. Axis fill is derived from saved ranks (unplayed = 0, C = 0.25, B = 0.5, A = 0.75, S = 1). Per-number games (Lava Leap, Avalanche Run) average the nine ×2–×10 ranks, so each letter bump is 1/9 of that axis. A full pentagon means S-rank on every game in that topic.
+
 ### API
 
 | Method | Path | Purpose |
@@ -81,11 +83,11 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 
 **Dino Dash** unlocks after a saved session in every catalog math game today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `null`, which means all of them. Set it to a number (for example `5`) to lower the bar as the catalog grows.
 
-To add a game: append an entry to `GAMES` with a `topic` (`addition`, `subtraction`, `multiplication`, `division`, `other`, or `bonus`), then add matching HTML under `wwwroot/games/` and JS under `wwwroot/js/`. If the game uses C→S ranks, copy the rank class names, inline and theme the CSS in that HTML, and save `stats.rank` like Calendar Scramble. Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
+To add a game: append an entry to `GAMES` with a `topic` (`addition`, `subtraction`, `multiplication`, `division`, `other`, or `bonus`), then add matching HTML under `wwwroot/games/` and JS under `wwwroot/js/`. Radar topics target **exactly five games**. For a math game, set `axisIndex` (0–4, unique within that topic) and a short `axisLabel` for the spider spoke. If the game uses C→S ranks, copy the rank class names, inline and theme the CSS in that HTML, and save `stats.rank` like Calendar Scramble. Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
 
 ## Features
 
-- **Lobby** at `/` — skill spider charts, topic picker, and a filtered activity list with personal C→S ranks, how-to, high scores, and player name
+- **Lobby** at `/` — skill spider charts (one axis per game, C→S fill), topic picker, and a filtered activity list with personal C→S ranks, how-to, high scores, and player name
 - **Progress** — per-game C→S rank (`stats.rank`) and stats saved to SQLite
 - **Daily bonus** — lobby shows lock status until today's catalog sessions are done
 - **Admin** at `/admin.html` — wipe a leaderboard or delete a single score

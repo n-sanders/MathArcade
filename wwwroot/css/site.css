@@ -233,6 +233,12 @@ input {
   font-family: var(--font-body);
 }
 
+.spider-label--soon {
+  fill: rgba(74, 107, 116, 0.45);
+  font-size: 8px;
+  font-weight: 700;
+}
+
 .topic-nav {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -535,6 +541,15 @@ input {
   padding: 0.28rem 0.7rem;
   font-size: 1.25rem;
   border-radius: 10px;
+}
+
+.rank-badge--pct {
+  min-width: 3.4rem;
+  letter-spacing: 0.02em;
+}
+
+.your-rank-single + .rank-grid {
+  margin-top: 0.75rem;
 }
 
 .rank-badge--mini {

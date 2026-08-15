@@ -1,7 +1,7 @@
 /* Pentagon spider / radar charts for the arcade lobby */
 (function (global) {
   const NS = "http://www.w3.org/2000/svg";
-  const SPIDER_DOMAIN_LABELS = ["Domain 1", "Domain 2", "Domain 3", "Domain 4", "Domain 5"];
+  const LABEL_LINE_HEIGHT = 9;
 
   function createEl(name, attrs) {
     const node = document.createElementNS(NS, name);
@@ -29,22 +29,27 @@
     }).join(" ");
   }
 
-  function randomDomainScores(count = SPIDER_DOMAIN_LABELS.length) {
-    return Array.from({ length: count }, () => 0.28 + Math.random() * 0.62);
+  function wrapSpiderLabel(label) {
+    const text = String(label || "");
+    if (text.length <= 10) return [text];
+    const idx = text.lastIndexOf(" ");
+    if (idx <= 0) return [text];
+    return [text.slice(0, idx), text.slice(idx + 1)];
   }
 
   /**
    * Draw a pentagon radar chart into an SVG element.
    * @param {SVGElement} svg
-   * @param {{ labels?: string[], scores: number[], rings?: number }} options
+   * @param {{ labels?: string[], scores: number[], placeholders?: boolean[], rings?: number }} options
    *        scores are 0–1. Selection styling is CSS (.spider-card.is-selected).
    */
   function drawSpiderChart(svg, options) {
     if (!svg) return;
+    const scores = options.scores || [];
     const labels = options.labels && options.labels.length
       ? options.labels
-      : SPIDER_DOMAIN_LABELS;
-    const scores = options.scores || [];
+      : Array.from({ length: scores.length || 5 }, () => "");
+    const placeholders = options.placeholders || [];
     const count = labels.length;
     const rings = options.rings || 4;
     const width = 220;
@@ -101,20 +106,36 @@
       let baseline = "middle";
       if (p.sin < -0.55) baseline = "auto";
       else if (p.sin > 0.55) baseline = "hanging";
+      const className = placeholders[i]
+        ? "spider-label spider-label--soon"
+        : "spider-label";
       const text = createEl("text", {
-        class: "spider-label",
+        class: className,
         x: p.x.toFixed(2),
         y: p.y.toFixed(2),
         "text-anchor": anchor,
         "dominant-baseline": baseline
       });
-      text.textContent = label;
+      const lines = wrapSpiderLabel(label);
+      if (lines.length === 1) {
+        text.textContent = lines[0];
+      } else {
+        const startDy = baseline === "middle"
+          ? -((lines.length - 1) * LABEL_LINE_HEIGHT) / 2
+          : 0;
+        lines.forEach((line, lineIndex) => {
+          const tspan = createEl("tspan", {
+            x: p.x.toFixed(2),
+            dy: lineIndex === 0 ? String(startDy) : String(LABEL_LINE_HEIGHT)
+          });
+          tspan.textContent = line;
+          text.appendChild(tspan);
+        });
+      }
       svg.appendChild(text);
     });
   }
 
   const arcade = global.MathArcade || (global.MathArcade = {});
-  arcade.SPIDER_DOMAIN_LABELS = SPIDER_DOMAIN_LABELS;
-  arcade.randomDomainScores = randomDomainScores;
   arcade.drawSpiderChart = drawSpiderChart;
 })(window);

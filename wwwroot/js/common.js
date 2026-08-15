@@ -18,6 +18,8 @@
       title: "Make 10",
       path: "/games/make10.html",
       topic: "addition",
+      axisIndex: 0,
+      axisLabel: "Make 10",
       blurb: "Drag a live electric wire to the number that completes 10. Climb C→S voltage ranks!",
       howTo: "A glowing wire is anchored to the base number. Guide its free end to the number that adds with the base to make 10, then click or release to connect. Correct circuits spark and boost your streak; wrong ones fizzle. Complete 10 circuits to rank up (C→B→A→S). Higher ranks pack the field with more decoys, tighten the snap, and add a per-circuit timer at A and S.",
       rankMode: "single"
@@ -27,6 +29,8 @@
       title: "Lava Leap",
       path: "/games/skipcounting.html",
       topic: "addition",
+      axisIndex: 1,
+      axisLabel: "Lava Leap",
       blurb: "Skip-count platform to platform and outrun the rising lava!",
       howTo: "Pick a number 2–10, then tap the platform showing the next skip-count number to leap there. Each number has its own rank (C→S) that speeds up the lava. Reach ×12 to escape!",
       rankMode: "perNumber"
@@ -36,6 +40,8 @@
       title: "Avalanche Run",
       path: "/games/avalanche.html",
       topic: "subtraction",
+      axisIndex: 0,
+      axisLabel: "Avalanche",
       blurb: "Skip-count down the mountain and outrun the avalanche!",
       howTo: "Pick a number 2–10, then tap the platform showing the next countdown number to hop down from ×12 all the way to 0. Each number has its own rank (C→S) that speeds up the avalanche. Reach 0 to escape!",
       rankMode: "perNumber"
@@ -45,6 +51,8 @@
       title: "Galaxy Maze",
       path: "/games/maze.html",
       topic: "multiplication",
+      axisIndex: 0,
+      axisLabel: "Galaxy Maze",
       blurb: "Pilot a starship from Sol and follow a signal of alien life. Climb C→S navigation ranks!",
       howTo: "Each hyperspace jump needs a multiplication answer. Pick the neighboring star showing the correct product to launch, scan each system for life, and find the living world 10-15 jumps out. Completing a mission ranks you up (C→B→A→S); higher ranks use bigger factors and more decoy products.",
       rankMode: "single"
@@ -54,6 +62,8 @@
       title: "Calendar Scramble",
       path: "/games/calendar.html",
       topic: "other",
+      axisIndex: 0,
+      axisLabel: "Calendar",
       blurb: "Drag scattered months back into order before the curtain falls. Climb C→S ranks — S starts with a fully empty year!",
       howTo: "The year stacks on the left with some months missing. Drag each missing month to its ordinal slot (1st–12th). Clear three rounds before the falling curtain covers the field to rank up (C→B→A→S). Higher ranks leave fewer months filled in; S starts empty every round. Fast placements score more; wrong slots cost 5.",
       rankMode: "single"
@@ -63,6 +73,8 @@
       title: "Prime Search",
       path: "/games/primesearch.html",
       topic: "other",
+      axisIndex: 1,
+      axisLabel: "Primes",
       blurb: "Memorize three primes, then hunt them with your flashlight. Climb C→S ranks as the field grows!",
       howTo: "Study the primes, then move your mouse to light the dark number field and click each target. Find all three to rank up (C→B→A→S). Higher ranks use a bigger board and larger numbers. Open Mission targets any time you need a reminder.",
       rankMode: "single"
@@ -72,6 +84,8 @@
       title: "Memory Match Math",
       path: "/games/memorymatch.html",
       topic: "other",
+      axisIndex: 2,
+      axisLabel: "Memory",
       blurb: "Match math problems with their answers as the colorful card board grows. Climb C→S ranks!",
       howTo: "Flip two cards at a time and pair each expression with its answer. Every match earns points and a celebration. Clear each board to grow from 8 to 24 cards; misses simply flip back with no penalty. Clear a 24-card board to rank up (C→B→A→S). Higher ranks mix in subtraction and multiplication with bigger numbers.",
       rankMode: "single"
@@ -179,6 +193,8 @@
   const RANKS = ["C", "B", "A", "S"];
   const PER_NUMBER_MIN = 2;
   const PER_NUMBER_MAX = 10;
+  const AXES_PER_TOPIC = 5;
+  const EMPTY_AXIS_LABEL = "Coming soon";
 
   function parseProgressStats(progress) {
     if (!progress || progress.statsJson == null || progress.statsJson === "") return {};
@@ -238,6 +254,78 @@
       };
     }
     return { played: false, rankMode };
+  }
+
+  function rankLetterScore(letter) {
+    const index = RANKS.indexOf(letter);
+    if (index < 0) return 0;
+    return (index + 1) / RANKS.length;
+  }
+
+  function getTopicAxisSlots(topicId) {
+    const slots = Array.from({ length: AXES_PER_TOPIC }, (_, axisIndex) => ({
+      axisIndex,
+      game: null,
+      label: EMPTY_AXIS_LABEL
+    }));
+
+    const games = getGamesForTopic(topicId).filter((game) => !game.bonus);
+    let extras = 0;
+    games.forEach((game) => {
+      const axisIndex = Number(game.axisIndex);
+      if (!Number.isInteger(axisIndex) || axisIndex < 0 || axisIndex >= AXES_PER_TOPIC) {
+        extras += 1;
+        console.warn(`MathArcade: ${game.id} has invalid axisIndex ${game.axisIndex} for topic ${topicId}`);
+        return;
+      }
+      if (slots[axisIndex].game) {
+        extras += 1;
+        console.warn(`MathArcade: ${game.id} reuses axisIndex ${axisIndex} on topic ${topicId}; ignored`);
+        return;
+      }
+      slots[axisIndex] = {
+        axisIndex,
+        game,
+        label: game.axisLabel || game.title
+      };
+    });
+    if (extras > 0) {
+      console.warn(`MathArcade: topic ${topicId} has ${extras} game(s) that could not fill a spider axis`);
+    }
+    return slots;
+  }
+
+  function getGameAxisScore(game, progress) {
+    if (!game) return 0;
+    const summary = getGameRankSummary(game, progress);
+    if (!summary.played) return 0;
+    if (summary.rankMode === "single") return rankLetterScore(summary.rank);
+    if (summary.rankMode === "perNumber") {
+      const ranks = summary.ranks || {};
+      let sum = 0;
+      let count = 0;
+      for (let n = PER_NUMBER_MIN; n <= PER_NUMBER_MAX; n++) {
+        sum += rankLetterScore(ranks[String(n)]);
+        count += 1;
+      }
+      return count ? sum / count : 0;
+    }
+    return 0;
+  }
+
+  function getGameAxisPercent(game, progress) {
+    return Math.round(getGameAxisScore(game, progress) * 100);
+  }
+
+  function getTopicAxisScores(topicId, progressByGameId = {}) {
+    const slots = getTopicAxisSlots(topicId);
+    return {
+      labels: slots.map((slot) => slot.label),
+      scores: slots.map((slot) => (
+        slot.game ? getGameAxisScore(slot.game, progressByGameId[slot.game.id]) : 0
+      )),
+      placeholders: slots.map((slot) => !slot.game)
+    };
   }
 
   function uuid() {
@@ -537,6 +625,12 @@
     formatScore,
     parseProgressStats,
     getGameRankSummary,
+    rankLetterScore,
+    getTopicAxisSlots,
+    getGameAxisScore,
+    getGameAxisPercent,
+    getTopicAxisScores,
+    AXES_PER_TOPIC,
     RANKS
   };
 })(window);

@@ -74,10 +74,10 @@
         getTopic,
         getRadarTopics,
         getGamesForTopic,
+        getTopicAxisScores,
+        getGameAxisPercent,
         formatActivityList,
         formatScore,
-        SPIDER_DOMAIN_LABELS,
-        randomDomainScores,
         drawSpiderChart
       } = MathArcade;
 
@@ -97,7 +97,6 @@
       const nameInput = document.getElementById("player-name");
       const form = document.getElementById("player-form");
 
-      const domainScoresByTopic = {};
       let selectedTopicId = TOPICS[0].id;
       let selectedId = null;
       let unlockStatus = getDailyBonusUnlockStatus({});
@@ -118,13 +117,6 @@
         }
       });
 
-      function scoresForTopic(topicId) {
-        if (!domainScoresByTopic[topicId]) {
-          domainScoresByTopic[topicId] = randomDomainScores(SPIDER_DOMAIN_LABELS.length);
-        }
-        return domainScoresByTopic[topicId];
-      }
-
       function renderRadarCharts() {
         radarEl.innerHTML = "";
         getRadarTopics().forEach((topic) => {
@@ -144,9 +136,11 @@
           btn.appendChild(svg);
           btn.addEventListener("click", () => selectTopic(topic.id));
           radarEl.appendChild(btn);
+          const axis = getTopicAxisScores(topic.id, progressByGameId);
           drawSpiderChart(svg, {
-            labels: SPIDER_DOMAIN_LABELS,
-            scores: scoresForTopic(topic.id)
+            labels: axis.labels,
+            scores: axis.scores,
+            placeholders: axis.placeholders
           });
         });
       }
@@ -276,10 +270,18 @@
         return "";
       }
 
+      function progressBadgeClass(percent) {
+        if (percent >= 100) return "rank-S";
+        if (percent >= 75) return "rank-A";
+        if (percent >= 50) return "rank-B";
+        return "rank-C";
+      }
+
       function previewRankHtml(game, summary) {
         if (!game || game.rankMode === "none") return "";
         if (!summary.played) {
-          return `<h3>Your rank</h3><p class="your-rank-empty">Play to earn a rank</p>`;
+          const heading = game.rankMode === "perNumber" ? "Your progress" : "Your rank";
+          return `<h3>${heading}</h3><p class="your-rank-empty">Play to earn a rank</p>`;
         }
         if (summary.rankMode === "single") {
           return `<h3>Your rank</h3>` +
@@ -289,6 +291,7 @@
             `</div>`;
         }
         if (summary.rankMode === "perNumber") {
+          const percent = getGameAxisPercent(game, progressByGameId[game.id]);
           const cells = Object.keys(summary.ranks)
             .sort((a, b) => Number(a) - Number(b))
             .map((n) => {
@@ -299,9 +302,12 @@
                 `</span>`;
             })
             .join("");
-          return `<h3>Your ranks</h3>` +
-            `<div class="rank-grid">${cells}</div>` +
-            rankLegendHtml();
+          return `<h3>Your progress</h3>` +
+            `<div class="your-rank-single">` +
+              `<span class="rank-badge rank-badge--lg rank-badge--pct ${progressBadgeClass(percent)}">${percent}%</span>` +
+              rankLegendHtml() +
+            `</div>` +
+            `<div class="rank-grid">${cells}</div>`;
         }
         return "";
       }
@@ -395,6 +401,7 @@
         }
         applyRankUi();
         applyUnlockUi();
+        renderRadarCharts();
       }
 
       async function selectGame(id) {
