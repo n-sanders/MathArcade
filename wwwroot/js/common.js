@@ -91,6 +91,17 @@
       rankMode: "single"
     },
     {
+      id: "feedthecats",
+      title: "Feed the Cats",
+      path: "/games/feedthecats.html",
+      topic: "subtraction",
+      axisIndex: 1,
+      axisLabel: "Doubles",
+      blurb: "Feed hungry cats by solving doubles subtraction facts with number cards. Climb C→S ranks!",
+      howTo: "Three cats are waiting, each with a subtraction problem missing one number. Play a card from your hand into a blank — it's correct only when the card is exactly half the top number (like 14 − 7). Solve 12 problems to finish a round and clear 3 rounds to rank up (C→B→A→S). A and S ranks sneak in odd-numbered trick problems that no card can solve, and S adds a 120-second timer!",
+      rankMode: "single"
+    },
+    {
       id: "bonus",
       title: "Dino Dash",
       path: "/games/bonus.html",
