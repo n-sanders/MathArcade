@@ -23,36 +23,46 @@
       </form>
     </header>
 
-    <main class="layout">
+    <main>
+    <section class="topic-board">
+      <div class="skill-radar" id="skill-radar" aria-label="Skill snapshots"></div>
+      <nav class="topic-nav" id="topic-nav" aria-label="Topics"></nav>
+    </section>
+
+    <div class="layout">
       <aside class="activity-list" id="activity-list" aria-label="Activities">
         <h2>Activities</h2>
+        <div id="activity-list-items"></div>
       </aside>
       <section class="preview-panel" id="preview" aria-live="polite">
-        <p class="preview-kicker">Select an activity</p>
+        <p class="preview-kicker" id="preview-kicker">Select an activity</p>
         <h1 id="preview-title">Pick a game</h1>
         <p id="preview-blurb">Choose something on the left to see how it works, then launch when you are ready.</p>
-        <div class="howto">
+        <div class="howto" id="preview-howto-wrap">
           <strong>How to play</strong>
           <span id="preview-howto">—</span>
         </div>
         <p class="bonus-status" id="preview-bonus-status" hidden></p>
         <div class="preview-meta">
           <div class="your-rank" id="preview-rank" hidden></div>
-          <div class="scores">
+          <div class="scores" id="preview-scores-wrap">
             <h3>High scores</h3>
             <ul id="preview-scores"></ul>
           </div>
         </div>
         <a class="launch" id="preview-launch" href="#">Launch</a>
       </section>
+    </div>
     </main>
   </div>
 
   <script src="/js/common.js"></script>
+  <script src="/js/spider.js"></script>
   <script>
     (function () {
       const {
         GAMES,
+        TOPICS,
         RANKS,
         getPlayerName,
         setPlayerName,
@@ -61,22 +71,35 @@
         loadAllProgress,
         getDailyBonusUnlockStatus,
         getGameRankSummary,
+        getTopic,
+        getRadarTopics,
+        getGamesForTopic,
         formatActivityList,
-        formatScore
+        formatScore,
+        SPIDER_DOMAIN_LABELS,
+        randomDomainScores,
+        drawSpiderChart
       } = MathArcade;
 
-      const listEl = document.getElementById("activity-list");
+      const radarEl = document.getElementById("skill-radar");
+      const topicNavEl = document.getElementById("topic-nav");
+      const listItemsEl = document.getElementById("activity-list-items");
+      const kickerEl = document.getElementById("preview-kicker");
       const titleEl = document.getElementById("preview-title");
       const blurbEl = document.getElementById("preview-blurb");
+      const howtoWrapEl = document.getElementById("preview-howto-wrap");
       const howtoEl = document.getElementById("preview-howto");
       const bonusStatusEl = document.getElementById("preview-bonus-status");
       const rankEl = document.getElementById("preview-rank");
+      const scoresWrapEl = document.getElementById("preview-scores-wrap");
       const scoresEl = document.getElementById("preview-scores");
       const launchEl = document.getElementById("preview-launch");
       const nameInput = document.getElementById("player-name");
       const form = document.getElementById("player-form");
 
-      let selectedId = GAMES.find((g) => !g.bonus)?.id || GAMES[0].id;
+      const domainScoresByTopic = {};
+      let selectedTopicId = TOPICS[0].id;
+      let selectedId = null;
       let unlockStatus = getDailyBonusUnlockStatus({});
       let progressByGameId = {};
 
@@ -95,22 +118,97 @@
         }
       });
 
-      GAMES.forEach((game) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "activity-btn" + (game.id === selectedId ? " active" : "");
-        btn.dataset.id = game.id;
-        if (game.bonus) btn.classList.add("bonus");
-        btn.innerHTML =
-          `<span class="title-row">` +
-            `<span class="title">${escapeHtml(game.title)}</span>` +
-            `<span class="rank-slot" data-rank-slot></span>` +
-          `</span>` +
-          `<span class="hint">${escapeHtml(game.blurb)}</span>` +
-          (game.bonus ? `<span class="lock-badge" data-lock-badge hidden></span>` : "");
-        btn.addEventListener("click", () => selectGame(game.id));
-        listEl.appendChild(btn);
-      });
+      function scoresForTopic(topicId) {
+        if (!domainScoresByTopic[topicId]) {
+          domainScoresByTopic[topicId] = randomDomainScores(SPIDER_DOMAIN_LABELS.length);
+        }
+        return domainScoresByTopic[topicId];
+      }
+
+      function renderRadarCharts() {
+        radarEl.innerHTML = "";
+        getRadarTopics().forEach((topic) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "spider-card" + (topic.id === selectedTopicId ? " is-selected" : "");
+          btn.dataset.topic = topic.id;
+          btn.setAttribute("aria-pressed", topic.id === selectedTopicId ? "true" : "false");
+          btn.setAttribute("aria-label", `${topic.label} skill snapshot`);
+          const label = document.createElement("span");
+          label.className = "spider-card-label";
+          label.textContent = topic.label;
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svg.classList.add("spider-svg");
+          svg.setAttribute("aria-hidden", "true");
+          btn.appendChild(label);
+          btn.appendChild(svg);
+          btn.addEventListener("click", () => selectTopic(topic.id));
+          radarEl.appendChild(btn);
+          drawSpiderChart(svg, {
+            labels: SPIDER_DOMAIN_LABELS,
+            scores: scoresForTopic(topic.id)
+          });
+        });
+      }
+
+      function renderTopicNav() {
+        topicNavEl.innerHTML = "";
+        TOPICS.forEach((topic) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "topic-btn";
+          if (topic.id === selectedTopicId) btn.classList.add("is-selected");
+          if (topic.comingSoon) btn.classList.add("coming-soon");
+          if (topic.bonus) btn.classList.add("bonus");
+          btn.dataset.topic = topic.id;
+          btn.setAttribute("aria-pressed", topic.id === selectedTopicId ? "true" : "false");
+          btn.textContent = topic.label;
+          btn.addEventListener("click", () => selectTopic(topic.id));
+          topicNavEl.appendChild(btn);
+        });
+      }
+
+      function syncTopicSelection() {
+        radarEl.querySelectorAll(".spider-card").forEach((btn) => {
+          const on = btn.dataset.topic === selectedTopicId;
+          btn.classList.toggle("is-selected", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        topicNavEl.querySelectorAll(".topic-btn").forEach((btn) => {
+          const on = btn.dataset.topic === selectedTopicId;
+          btn.classList.toggle("is-selected", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      }
+
+      function renderActivityList() {
+        listItemsEl.innerHTML = "";
+        const games = getGamesForTopic(selectedTopicId);
+        if (!games.length) {
+          const empty = document.createElement("p");
+          empty.className = "coming-soon-note";
+          empty.textContent = "Coming soon";
+          listItemsEl.appendChild(empty);
+          return;
+        }
+        games.forEach((game) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "activity-btn" + (game.id === selectedId ? " active" : "");
+          btn.dataset.id = game.id;
+          if (game.bonus) btn.classList.add("bonus");
+          // Rank badges still live on the activity button: [data-rank-slot] is filled by applyRankUi.
+          btn.innerHTML =
+            `<span class="title-row">` +
+              `<span class="title">${escapeHtml(game.title)}</span>` +
+              `<span class="rank-slot" data-rank-slot></span>` +
+            `</span>` +
+            `<span class="hint">${escapeHtml(game.blurb)}</span>` +
+            (game.bonus ? `<span class="lock-badge" data-lock-badge hidden></span>` : "");
+          btn.addEventListener("click", () => selectGame(game.id));
+          listItemsEl.appendChild(btn);
+        });
+      }
 
       function bonusProgressHint(status) {
         if (status.unlocked) {
@@ -129,7 +227,7 @@
       }
 
       function applyUnlockUi() {
-        listEl.querySelectorAll(".activity-btn.bonus").forEach((btn) => {
+        listItemsEl.querySelectorAll(".activity-btn.bonus").forEach((btn) => {
           const locked = !unlockStatus.unlocked;
           btn.classList.toggle("locked", locked);
           btn.setAttribute("aria-disabled", locked ? "true" : "false");
@@ -208,8 +306,9 @@
         return "";
       }
 
+      // After each list rebuild and progress refresh, paint C→S badges into [data-rank-slot].
       function applyRankUi() {
-        listEl.querySelectorAll(".activity-btn").forEach((btn) => {
+        listItemsEl.querySelectorAll(".activity-btn").forEach((btn) => {
           const game = GAMES.find((g) => g.id === btn.dataset.id);
           const slot = btn.querySelector("[data-rank-slot]");
           if (!game || !slot) return;
@@ -225,14 +324,39 @@
         rankEl.hidden = !html;
       }
 
+      function showComingSoonPreview(topic) {
+        selectedId = null;
+        kickerEl.textContent = "Coming soon";
+        titleEl.textContent = topic.label;
+        blurbEl.textContent = "New activities for this topic are on the way.";
+        howtoWrapEl.hidden = true;
+        bonusStatusEl.hidden = true;
+        bonusStatusEl.textContent = "";
+        bonusStatusEl.classList.remove("unlocked");
+        rankEl.hidden = true;
+        rankEl.innerHTML = "";
+        scoresWrapEl.hidden = true;
+        scoresEl.innerHTML = "";
+        launchEl.hidden = true;
+        launchEl.href = "#";
+        launchEl.classList.add("disabled");
+        launchEl.setAttribute("aria-disabled", "true");
+        launchEl.textContent = "Coming soon";
+        launchEl.onclick = (e) => e.preventDefault();
+      }
+
       function updatePreviewForSelection(id) {
         const game = GAMES.find((g) => g.id === id);
         if (!game) return;
 
         const lockedBonus = !!(game.bonus && !unlockStatus.unlocked);
+        kickerEl.textContent = "Select an activity";
         titleEl.textContent = game.title;
         blurbEl.textContent = game.blurb;
         howtoEl.textContent = game.howTo;
+        howtoWrapEl.hidden = false;
+        scoresWrapEl.hidden = false;
+        launchEl.hidden = false;
 
         if (game.bonus) {
           bonusStatusEl.hidden = false;
@@ -276,7 +400,8 @@
       async function selectGame(id) {
         selectedId = id;
         const game = GAMES.find((g) => g.id === id);
-        listEl.querySelectorAll(".activity-btn").forEach((btn) => {
+        if (!game) return;
+        listItemsEl.querySelectorAll(".activity-btn").forEach((btn) => {
           btn.classList.toggle("active", btn.dataset.id === id);
         });
         updatePreviewForSelection(id);
@@ -284,6 +409,7 @@
         scoresEl.innerHTML = `<li class="empty">Loading…</li>`;
         try {
           const scores = await loadTopScores(game.id, 5);
+          if (selectedId !== id) return;
           if (!scores.length) {
             scoresEl.innerHTML = `<li class="empty">No scores yet — be the first!</li>`;
           } else {
@@ -292,8 +418,26 @@
               .join("");
           }
         } catch {
+          if (selectedId !== id) return;
           scoresEl.innerHTML = `<li class="empty">Scores unavailable</li>`;
         }
+      }
+
+      function selectTopic(topicId) {
+        const topic = getTopic(topicId);
+        if (!topic) return;
+        selectedTopicId = topicId;
+        syncTopicSelection();
+        const games = getGamesForTopic(topicId);
+        selectedId = games[0] ? games[0].id : null;
+        renderActivityList();
+        applyRankUi();
+        applyUnlockUi();
+        if (!games.length) {
+          showComingSoonPreview(topic);
+          return;
+        }
+        selectGame(games[0].id);
       }
 
       function escapeHtml(text) {
@@ -314,10 +458,13 @@
         refreshUnlockStatus();
       });
 
+      renderRadarCharts();
+      renderTopicNav();
+      selectTopic(selectedTopicId);
+
       ensurePlayer(getPlayerName() || undefined)
         .then(() => refreshUnlockStatus())
         .catch(() => applyUnlockUi());
-      selectGame(selectedId);
     })();
   </script>
 </body>
