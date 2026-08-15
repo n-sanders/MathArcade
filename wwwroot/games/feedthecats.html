@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Feed the Cats · MathArcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cats-bg: #1a120e;
+      --cats-panel: #2a1c16;
+      --cats-cream: #fff3e0;
+      --cats-gold: #f2c84b;
+      --cats-orange: #e78438;
+      --cats-teal: #2f8eaa;
+      --cats-teal-light: #72c4d3;
+      --cats-text: #fff8ee;
+      --cats-dim: #b89a82;
+      --cats-red: #ff6b6b;
+      --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+      --font-body: "Nunito", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--cats-bg);
+      color: var(--cats-text);
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .cats-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.55rem 1rem;
+      background: rgba(26, 18, 14, 0.94);
+      border-bottom: 1px solid rgba(242, 200, 75, 0.18);
+      z-index: 10;
+    }
+
+    .cats-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.9rem;
+      min-width: 0;
+    }
+
+    .back-link {
+      color: var(--cats-dim);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover { color: var(--cats-gold); }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.05rem, 3vw, 1.5rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--cats-cream);
+    }
+
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.4rem;
+    }
+
+    .hud-chip {
+      background: rgba(255, 243, 224, 0.08);
+      border: 1px solid rgba(242, 200, 75, 0.22);
+      border-radius: 999px;
+      padding: 0.28rem 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--cats-dim);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hud-chip .val { color: var(--cats-gold); text-transform: none; letter-spacing: 0; font-size: 0.95rem; }
+
+    .hud-chip .val.rank-C { color: #c8c8d0; }
+    .hud-chip .val.rank-B { color: #7dffa8; }
+    .hud-chip .val.rank-A { color: #9ec5ff; }
+    .hud-chip .val.rank-S { color: var(--cats-gold); }
+
+    .hud-chip.timer-warn {
+      border-color: rgba(231, 132, 56, 0.7);
+      animation: timer-pulse 0.9s ease-in-out infinite;
+    }
+    .hud-chip.timer-warn .val { color: var(--cats-orange); }
+    .hud-chip.timer-critical {
+      border-color: rgba(255, 107, 107, 0.8);
+      animation: timer-pulse 0.45s ease-in-out infinite;
+    }
+    .hud-chip.timer-critical .val { color: var(--cats-red); }
+
+    @keyframes timer-pulse {
+      50% { box-shadow: 0 0 12px rgba(242, 200, 75, 0.35); }
+    }
+
+    .cats-stage {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+      display: flex;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(47, 142, 170, 0.18), transparent 45%),
+        radial-gradient(ellipse at 80% 100%, rgba(231, 132, 56, 0.16), transparent 50%),
+        linear-gradient(180deg, #241610 0%, #1a120e 100%);
+    }
+
+    .cats-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(150px, 22%) 1fr;
+      gap: 0.85rem;
+      padding: 0.7rem 1rem 1rem;
+      min-height: 0;
+      min-width: 0;
+    }
+
+    .hand {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.7rem;
+      min-height: 0;
+    }
+
+    .card {
+      appearance: none;
+      border: 3px solid rgba(242, 200, 75, 0.45);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fff8ee, #f3d7a4);
+      color: #3b3331;
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 5vh, 2.6rem);
+      font-weight: 700;
+      min-height: 4.4rem;
+      cursor: pointer;
+      touch-action: none;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+    }
+
+    .card:hover { transform: translateY(-2px) scale(1.02); }
+    .card.selected, .cats-stage.picking .card.selected {
+      border-color: var(--cats-teal-light);
+      box-shadow: 0 0 0 3px rgba(114, 196, 211, 0.45), 0 10px 22px rgba(0, 0, 0, 0.4);
+      transform: translateY(-4px) scale(1.05);
+    }
+    .card.dragging { opacity: 0.35; }
+
+    .stations {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.65rem;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .station {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 0;
+      border-radius: 22px;
+      padding: 0.35rem 0.35rem 0.7rem;
+      background: rgba(255, 243, 224, 0.04);
+      border: 1px solid rgba(255, 243, 224, 0.08);
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+
+    .station.hot {
+      border-color: rgba(114, 196, 211, 0.7);
+      background: rgba(47, 142, 170, 0.16);
+    }
+
+    .station.idle { opacity: 0.72; }
+    .station.idle .fact { visibility: hidden; }
+
+    .cat-wrap {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      width: 100%;
+      min-height: 0;
+    }
+
+    .cat-wrap svg.recolorable-cat {
+      width: 100%;
+      height: 100%;
+      max-height: 52vh;
+      overflow: visible;
+    }
+
+    .fact {
+      margin-top: 0.15rem;
+      font-family: var(--font-display);
+      font-variant-numeric: tabular-nums;
+      display: grid;
+      justify-items: end;
+      min-width: 4.8rem;
+      color: var(--cats-cream);
+    }
+
+    .fact-top {
+      font-size: clamp(1.5rem, 4.2vh, 2.2rem);
+      font-weight: 700;
+      line-height: 1;
+      padding-right: 0.35rem;
+    }
+
+    .fact-row {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .minus {
+      font-size: clamp(1.3rem, 3.6vh, 1.9rem);
+      font-weight: 700;
+    }
+
+    .fact-blank {
+      appearance: none;
+      width: 2.5rem;
+      height: 2.2rem;
+      border-radius: 10px;
+      border: 2px dashed rgba(242, 200, 75, 0.7);
+      background: rgba(26, 18, 14, 0.55);
+      color: var(--cats-gold);
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .cats-stage.picking .fact-blank {
+      animation: blank-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes blank-pulse {
+      50% { border-color: var(--cats-teal-light); background: rgba(47, 142, 170, 0.28); }
+    }
+
+    .fact-rule {
+      width: 100%;
+      height: 3px;
+      margin: 0.2rem 0 0.15rem;
+      background: var(--cats-cream);
+      border-radius: 2px;
+      opacity: 0.85;
+    }
+
+    .fact-diff {
+      font-size: clamp(1.4rem, 4vh, 2rem);
+      font-weight: 700;
+      padding-right: 0.35rem;
+      line-height: 1;
+      color: var(--cats-gold);
+    }
+
+    .fact.complete .fact-blank {
+      border-style: solid;
+      border-color: var(--cats-teal-light);
+      background: rgba(47, 142, 170, 0.25);
+    }
+
+    .station.shake { animation: station-shake 0.4s ease; }
+    @keyframes station-shake {
+      20% { transform: translateX(-7px); }
+      40% { transform: translateX(7px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(3px); }
+    }
+
+    #effects {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 8;
+    }
+
+    .fx-particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: burst 0.65s ease-out forwards;
+    }
+    @keyframes burst {
+      to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+    }
+
+    .confetti {
+      position: absolute;
+      top: -12px;
+      width: 8px;
+      height: 12px;
+      border-radius: 2px;
+      animation: confetti-fall 1.5s linear forwards;
+    }
+    @keyframes confetti-fall {
+      from { transform: translate3d(0, -20px, 0) rotate(var(--start-rotation)); opacity: 1; }
+      to { transform: translate3d(var(--drift), 115vh, 0) rotate(var(--end-rotation)); opacity: 0.9; }
+    }
+
+    .ribbon {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, -50%);
+      z-index: 11;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      padding: 0.85rem 1.4rem;
+      border-radius: 16px;
+      background: rgba(26, 18, 14, 0.88);
+      border: 1px solid rgba(242, 200, 75, 0.45);
+      animation: ribbon-pop 1.55s ease forwards;
+      pointer-events: none;
+    }
+    .ribbon strong {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--cats-gold);
+    }
+    .ribbon span { color: var(--cats-dim); font-weight: 700; }
+    @keyframes ribbon-pop {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+      14% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+      80% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -62%) scale(0.94); }
+    }
+
+    #drag-ghost {
+      position: fixed;
+      z-index: 40;
+      pointer-events: none;
+      width: 3.4rem;
+      height: 3.4rem;
+      margin: -1.7rem 0 0 -1.7rem;
+      border-radius: 14px;
+      border: 3px solid var(--cats-teal-light);
+      background: linear-gradient(180deg, #fff8ee, #f3d7a4);
+      color: #3b3331;
+      font-family: var(--font-display);
+      font-size: 1.7rem;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+    }
+    #drag-ghost[hidden] { display: none; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      text-align: center;
+      padding: 1.5rem;
+      background: radial-gradient(circle at 50% 40%, rgba(242, 200, 75, 0.12), transparent 60%), rgba(26, 18, 14, 0.86);
+      backdrop-filter: blur(3px);
+      z-index: 12;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.9rem, 6.5vw, 3rem);
+      font-weight: 700;
+      color: #fff8e7;
+      text-shadow: 0 0 18px rgba(242, 200, 75, 0.55);
+    }
+    .overlay p {
+      margin: 0;
+      max-width: 42ch;
+      font-size: 1.05rem;
+      color: var(--cats-dim);
+      font-weight: 600;
+      line-height: 1.5;
+    }
+    .overlay .stat-line {
+      color: var(--cats-gold);
+      font-weight: 800;
+      font-size: 1.15rem;
+    }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+    .rank-C { background: rgba(140, 140, 150, 0.25); color: #c8c8d0; border-color: rgba(180, 180, 190, 0.4); }
+    .rank-B { background: rgba(80, 180, 120, 0.2); color: #7dffa8; border-color: rgba(80, 220, 140, 0.45); }
+    .rank-A { background: rgba(80, 140, 255, 0.22); color: #9ec5ff; border-color: rgba(100, 160, 255, 0.5); }
+    .rank-S {
+      background: linear-gradient(135deg, rgba(255, 200, 60, 0.3), rgba(255, 100, 40, 0.35));
+      color: var(--cats-gold);
+      border-color: rgba(255, 209, 102, 0.65);
+      box-shadow: 0 0 12px rgba(255, 180, 40, 0.35);
+      animation: sGlow 1.8s ease-in-out infinite;
+    }
+    @keyframes sGlow { 50% { box-shadow: 0 0 20px rgba(255, 180, 40, 0.65); } }
+
+    .rank-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem 0.75rem;
+      margin: 0.25rem 0 0.35rem;
+      font-size: 0.78rem;
+      color: var(--cats-dim);
+      max-width: 46ch;
+    }
+    .rank-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    .rank-up-banner {
+      margin: 0.15rem 0;
+      padding: 0.55rem 0.95rem;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(242, 200, 75, 0.15), rgba(231, 132, 56, 0.22));
+      border: 1px solid rgba(242, 200, 75, 0.45);
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--cats-gold);
+      animation: rankPop 0.6s ease;
+    }
+    @keyframes rankPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .end-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.35rem 0 0.15rem;
+    }
+    .end-stat {
+      background: rgba(242, 200, 75, 0.08);
+      border: 1px solid rgba(242, 200, 75, 0.25);
+      border-radius: 12px;
+      padding: 0.55rem 0.9rem;
+      min-width: 90px;
+    }
+    .end-stat .lbl {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--cats-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .end-stat .num {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--cats-gold);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.8rem 2.2rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      color: #1a1206;
+      background: linear-gradient(135deg, var(--cats-gold), var(--cats-orange));
+      box-shadow: 0 0 18px rgba(242, 200, 75, 0.4), 0 4px 14px rgba(0, 0, 0, 0.5);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 0 28px rgba(242, 200, 75, 0.6), 0 6px 18px rgba(0, 0, 0, 0.5);
+    }
+    .btn:active { transform: translateY(0) scale(0.98); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--cats-dim);
+      border: 1px solid rgba(184, 154, 130, 0.4);
+      box-shadow: none;
+      font-size: 0.9rem;
+      padding: 0.45rem 1.1rem;
+    }
+    .btn-ghost:hover {
+      color: var(--cats-text);
+      border-color: rgba(242, 200, 75, 0.5);
+    }
+
+    @media (max-width: 760px), (orientation: portrait) {
+      .cats-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+      }
+      .stations { order: 1; }
+      .hand {
+        order: 2;
+        flex-direction: row;
+        justify-content: center;
+      }
+      .card {
+        flex: 1 1 0;
+        max-width: 7rem;
+        min-height: 3.6rem;
+        font-size: 1.8rem;
+      }
+      .cat-wrap svg.recolorable-cat { max-height: 38vh; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fx-particle, .confetti, .ribbon { display: none !important; }
+      .station.shake, .hud-chip.timer-warn, .hud-chip.timer-critical, .rank-S { animation: none; }
+      .cats-stage.picking .fact-blank { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cats-topbar">
+    <div class="cats-left">
+      <a class="back-link" href="/">← Arcade</a>
+      <h1 class="game-title">FEED THE CATS</h1>
+    </div>
+    <div class="hud">
+      <div class="hud-chip">Score <span class="val" id="score">0</span></div>
+      <div class="hud-chip">Rank <span class="val rank-C" id="rank-label">C</span></div>
+      <div class="hud-chip">Round <span class="val" id="round">–</span></div>
+      <div class="hud-chip">Fed <span class="val" id="fed">0/12</span></div>
+      <div class="hud-chip" id="timer-chip" hidden>Time <span class="val" id="timer">–</span></div>
+      <div class="hud-chip">Best <span class="val" id="best">0</span></div>
+      <button class="btn btn-ghost" id="end-btn">End</button>
+    </div>
+  </div>
+  <div class="cats-stage" id="stage">
+    <div class="cats-layout">
+      <div class="hand" id="hand" aria-label="Number cards"></div>
+      <div class="stations" id="stations" aria-label="Cat stations"></div>
+    </div>
+    <div id="effects"></div>
+    <div class="overlay" id="overlay">
+      <h2>FEED THE CATS</h2>
+      <p id="overlay-text">The missing number is half of the top. Feed the cats 12 doubles to clear a round.</p>
+      <div id="overlay-extra"></div>
+      <button class="btn" id="start-btn">Feed the cats</button>
+    </div>
+  </div>
+  <div id="drag-ghost" hidden></div>
+  <template id="cat-template">
+<!--
+  RECOLORABLE CAT
+
+  Quick recoloring:
+    1. Change data-palette on the <svg> element to one of:
+       calico | ginger-tabby | tuxedo | gray-tabby | siamese | fantasy
+    2. For a portable custom coloring, set data-palette="custom" and edit the
+       clearly labeled CUSTOM PALETTE block near the end of the stylesheet.
+    3. For live webpage variables, set data-palette="variables" and override the
+       cat custom properties on this SVG from CSS.
+
+  Pattern layers are independent from paint colors. Their opacity controls let
+  one drawing become a patched, striped, pointed, socked, or solid-colored cat.
+
+  Expression:
+    Change data-expression on the <svg> element between "neutral" and "happy".
+    When the SVG is inline, changing the attribute crossfades the face layers.
+
+  For CSS control from a web page, inline this SVG in the HTML. CSS variables on
+  the host page do not normally cross into an SVG loaded through an <img> tag.
+  If literal inline copies share one document, give each recolorable-cat ID prefix
+  a unique suffix. Separate copies loaded through <img> are already isolated.
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  class="recolorable-cat"
+  data-palette="calico"
+  data-expression="neutral"
+  viewBox="0 0 800 800"
+  width="800"
+  height="800"
+  role="img"
+  aria-label="A sitting cat with customizable colors and expression"
+>
+  <title>A sitting cat with customizable colors and expression</title>
+  <desc>
+    A friendly sitting cat with a curled tail, bright eyes, a collar, and color layers
+    that can be changed through CSS custom properties and built-in palette presets.
+    Its face can crossfade between neutral and happy expressions.
+  </desc>
+
+  <style>
+    /* Default palette: calico. All painted colors live in palette declarations. */
+    svg.recolorable-cat {
+      --cat-fur-base: #f2d3a7;
+      --cat-fur-shadow: #d4aa78;
+      --cat-patch-one: #e78438;
+      --cat-patch-two: #3e4247;
+      --cat-light-fur: #fff7ea;
+      --cat-stripe: #6c3c25;
+      --cat-point: #58453d;
+      --cat-inner-ear: #e7aaa7;
+      --cat-eye: #71ad6f;
+      --cat-pupil: #1d2224;
+      --cat-eye-glint: #ffffff;
+      --cat-nose: #b85f6c;
+      --cat-mouth: #6a4045;
+      --cat-outline: #3b3331;
+      --cat-whisker: #514846;
+      --cat-collar: #2f8eaa;
+      --cat-collar-light: #72c4d3;
+      --cat-tag: #f2c84b;
+      --cat-tag-light: #fff1a3;
+      --cat-ground-shadow: #3b3030;
+
+      --cat-patches-opacity: 1;
+      --cat-stripes-opacity: 0.28;
+      --cat-socks-opacity: 1;
+      --cat-blaze-opacity: 0.7;
+      --cat-points-opacity: 0;
+      --cat-tail-tip-opacity: 1;
+      --cat-shadow-opacity: 0.18;
+      --cat-outline-width: 10px;
+      --cat-feature-width: 7px;
+    }
+
+    svg.recolorable-cat[data-palette="ginger-tabby"] {
+      --cat-fur-base: #e99a43;
+      --cat-fur-shadow: #c96f2a;
+      --cat-patch-one: #e99a43;
+      --cat-patch-two: #e99a43;
+      --cat-light-fur: #ffe1b6;
+      --cat-stripe: #8a471d;
+      --cat-point: #8a471d;
+      --cat-inner-ear: #e9a095;
+      --cat-eye: #8fb660;
+      --cat-pupil: #1c201e;
+      --cat-eye-glint: #ffffff;
+      --cat-nose: #ad5960;
+      --cat-mouth: #6e3e36;
+      --cat-outline: #543724;
+      --cat-whisker: #6c4a36;
+      --cat-collar: #3f86c8;
+      --cat-collar-light: #83b9e7;
+      --cat-tag: #f1c84b;
+      --cat-tag-light: #fff1a3;
+      --cat-ground-shadow: #4b3025;
+      --cat-patches-opacity: 0;
+      --cat-stripes-opacity: 0.95;
+      --cat-socks-opacity: 0.52;
+      --cat-blaze-opacity: 0.12;
+      --cat-points-opacity: 0;
+      --cat-tail-tip-opacity: 0;
+      --cat-shadow-opacity: 0.17;
+    }
+
+    svg.recolorable-cat[data-palette="tuxedo"] {
+      --cat-fur-base: #303238;
+      --cat-fur-shadow: #191a1e;
+      --cat-patch-one: #303238;
+      --cat-patch-two: #303238;
+      --cat-light-fur: #f7f4ec;
+      --cat-stripe: #0e0f11;
+      --cat-point: #15161a;
+      --cat-inner-ear: #9a6f78;
+      --cat-eye: #d4a947;
+      --cat-pupil: #111214;
+      --cat-eye-glint: #ffffff;
+      --cat-nose: #b96b78;
+      --cat-mouth: #744852;
+      --cat-outline: #121318;
+      --cat-whisker: #5b5658;
+      --cat-collar: #ca4657;
+      --cat-collar-light: #ef8790;
+      --cat-tag: #e8bd42;
+      --cat-tag-light: #fff0a0;
+      --cat-ground-shadow: #15161a;
+      --cat-patches-opacity: 0;
+      --cat-stripes-opacity: 0.12;
+      --cat-socks-opacity: 1;
+      --cat-blaze-opacity: 1;
+      --cat-points-opacity: 0;
+      --cat-tail-tip-opacity: 0;
+      --cat-shadow-opacity: 0.24;
+    }
+
+    svg.recolorable-cat[data-palette="gray-tabby"] {
+      --cat-fur-base: #8c98a5;
+      --cat-fur-shadow: #687480;
+      --cat-patch-one: #8c98a5;
+      --cat-patch-two: #8c98a5;
+      --cat-light-fur: #dce3e6;
+      --cat-stripe: #48535e;
+      --cat-point: #48535e;
+      --cat-inner-ear: #d19b9c;
+      --cat-eye: #91bd75;
+      --cat-pupil: #202529;
+      --cat-eye-glint: #ffffff;
+      --cat-nose: #a75e69;
+      --cat-mouth: #62464c;
+      --cat-outline: #37414a;
+      --cat-whisker: #3f4850;
+      --cat-collar: #8669b5;
+      --cat-collar-light: #b39ddd;
+      --cat-tag: #edc349;
+      --cat-tag-light: #fff1a3;
+      --cat-ground-shadow: #333a41;
+      --cat-patches-opacity: 0;
+      --cat-stripes-opacity: 1;
+      --cat-socks-opacity: 0.58;
+      --cat-blaze-opacity: 0.1;
+      --cat-points-opacity: 0;
+      --cat-tail-tip-opacity: 0;
+      --cat-shadow-opacity: 0.19;
+    }
+
+    svg.recolorable-cat[data-palette="siamese"] {
+      --cat-fur-base: #ead9bb;
+      --cat-fur-shadow: #cdb995;
+      --cat-patch-one: #ead9bb;
+      --cat-patch-two: #ead9bb;
+      --cat-light-fur: #f7ead2;
+      --cat-stripe: #55433b;
+      --cat-point: #59453d;
+      --cat-inner-ear: #bc8582;
+      --cat-eye: #63b6d3;
+      --cat-pupil: #19262c;
+      --cat-eye-glint: #ffffff;
+      --cat-nose: #8c5961;
+      --cat-mouth: #664249;
+      --cat-outline: #493a34;
+      --cat-whisker: #5e514b;
+      --cat-collar: #456fae;
+      --cat-collar-light: #86a8d7;
+      --cat-tag: #efc94f;
+      --cat-tag-light: #fff2a3;
+      --cat-ground-shadow: #4c4039;
+      --cat-patches-opacity: 0;
+      --cat-stripes-opacity: 0.12;
+      --cat-socks-opacity: 0;
+      --cat-blaze-opacity: 0;
+      --cat-points-opacity: 1;
+      --cat-tail-tip-opacity: 0;
+      --cat-shadow-opacity: 0.18;
+    }
+
+    svg.recolorable-cat[data-palette="fantasy"] {
+      --cat-fur-base: #a88bd8;
+      --cat-fur-shadow: #785eb0;
+      --cat-patch-one: #f0809c;
+      --cat-patch-two: #54b8b1;
+      --cat-light-fur: #f4eaff;
+      --cat-stripe: #5d3e91;
+      --cat-point: #5d3e91;
+      --cat-inner-ear: #f3a8c5;
+      --cat-eye: #f2d34f;
+      --cat-pupil: #272139;
+      --cat-eye-glint: #ffffff;
+      --cat-nose: #d85b87;
+      --cat-mouth: #74416c;
+      --cat-outline: #49365f;
+      --cat-whisker: #5c4772;
+      --cat-collar: #43a89f;
+      --cat-collar-light: #84d7cc;
+      --cat-tag: #ffd85f;
+      --cat-tag-light: #fff4b0;
+      --cat-ground-shadow: #463359;
+      --cat-patches-opacity: 1;
+      --cat-stripes-opacity: 0.4;
+      --cat-socks-opacity: 1;
+      --cat-blaze-opacity: 0.72;
+      --cat-points-opacity: 0;
+      --cat-tail-tip-opacity: 1;
+      --cat-shadow-opacity: 0.2;
+    }
+
+    svg.recolorable-cat .cat__outline {
+      fill: none;
+      stroke: var(--cat-outline, #3b3331);
+      stroke-width: var(--cat-outline-width, 10px);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    svg.recolorable-cat .cat__feature-line {
+      fill: none;
+      stroke: var(--cat-outline, #3b3331);
+      stroke-width: var(--cat-feature-width, 7px);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    svg.recolorable-cat .cat__fur-base { fill: var(--cat-fur-base, #f2d3a7); }
+    svg.recolorable-cat .cat__fur-shadow { fill: var(--cat-fur-shadow, #d4aa78); }
+    svg.recolorable-cat .cat__patch-one { fill: var(--cat-patch-one, #e78438); }
+    svg.recolorable-cat .cat__patch-two { fill: var(--cat-patch-two, #3e4247); }
+    svg.recolorable-cat .cat__light-fur { fill: var(--cat-light-fur, #fff7ea); }
+    svg.recolorable-cat .cat__point-fill { fill: var(--cat-point, #58453d); }
+    svg.recolorable-cat .cat__inner-ear { fill: var(--cat-inner-ear, #e7aaa7); }
+    svg.recolorable-cat .cat__eye { fill: var(--cat-eye, #71ad6f); }
+    svg.recolorable-cat .cat__pupil { fill: var(--cat-pupil, #1d2224); }
+    svg.recolorable-cat .cat__eye-glint { fill: var(--cat-eye-glint, #ffffff); }
+    svg.recolorable-cat .cat__nose { fill: var(--cat-nose, #b85f6c); }
+    svg.recolorable-cat .cat__mouth-line { stroke: var(--cat-mouth, #6a4045); }
+    svg.recolorable-cat .cat__stripe-line { stroke: var(--cat-stripe, #6c3c25); }
+    svg.recolorable-cat .cat__whisker-line { stroke: var(--cat-whisker, #514846); }
+    svg.recolorable-cat .cat__whisker-dot { fill: var(--cat-whisker, #514846); }
+    svg.recolorable-cat .cat__collar { fill: var(--cat-collar, #2f8eaa); }
+    svg.recolorable-cat .cat__collar-light { fill: var(--cat-collar-light, #72c4d3); }
+    svg.recolorable-cat .cat__tag { fill: var(--cat-tag, #f2c84b); }
+    svg.recolorable-cat .cat__tag-light { fill: var(--cat-tag-light, #fff1a3); }
+    svg.recolorable-cat .cat__patches { opacity: var(--cat-patches-opacity, 1); }
+    svg.recolorable-cat .cat__stripes { opacity: var(--cat-stripes-opacity, 0.28); }
+    svg.recolorable-cat .cat__socks { opacity: var(--cat-socks-opacity, 1); }
+    svg.recolorable-cat .cat__blaze { opacity: var(--cat-blaze-opacity, 0.7); }
+    svg.recolorable-cat .cat__points { opacity: var(--cat-points-opacity, 0); }
+    svg.recolorable-cat .cat__tail-tip { opacity: var(--cat-tail-tip-opacity, 1); }
+    svg.recolorable-cat .cat__ground-shadow { opacity: var(--cat-shadow-opacity, 0.18); fill: var(--cat-ground-shadow, #3b3030); }
+
+    svg.recolorable-cat .cat__stroke-4 { stroke-width: 4px; }
+    svg.recolorable-cat .cat__stroke-5 { stroke-width: 5px; }
+    svg.recolorable-cat .cat__stroke-7 { stroke-width: 7px; }
+
+    svg.recolorable-cat .cat__expression-layer {
+      pointer-events: none;
+      transition: opacity 220ms ease-in-out;
+    }
+    svg.recolorable-cat .cat__expression--neutral { opacity: 1; }
+    svg.recolorable-cat .cat__expression--happy { opacity: 0; }
+    svg.recolorable-cat[data-expression="happy"] .cat__expression--neutral { opacity: 0; }
+    svg.recolorable-cat[data-expression="happy"] .cat__expression--happy { opacity: 1; }
+
+    @media (prefers-reduced-motion: reduce) {
+      svg.recolorable-cat .cat__expression-layer { transition: none; }
+    }
+
+    svg.recolorable-cat[data-palette="calico"] .cat__patches { opacity: 1; }
+    svg.recolorable-cat[data-palette="calico"] .cat__stripes { opacity: 0.28; }
+    svg.recolorable-cat[data-palette="calico"] .cat__socks { opacity: 1; }
+    svg.recolorable-cat[data-palette="calico"] .cat__blaze { opacity: 0.7; }
+    svg.recolorable-cat[data-palette="calico"] .cat__points { opacity: 0; }
+    svg.recolorable-cat[data-palette="calico"] .cat__tail-tip { opacity: 1; }
+    svg.recolorable-cat[data-palette="calico"] .cat__ground-shadow { opacity: 0.18; }
+
+    svg.recolorable-cat[data-palette="ginger-tabby"] .cat__patches { opacity: 0; }
+    svg.recolorable-cat[data-palette="ginger-tabby"] .cat__stripes { opacity: 0.95; }
+    svg.recolorable-cat[data-palette="ginger-tabby"] .cat__socks { opacity: 0.52; }
+    svg.recolorable-cat[data-palette="ginger-tabby"] .cat__blaze { opacity: 0.12; }
+    svg.recolorable-cat[data-palette="ginger-tabby"] .cat__points { opacity: 0; }
+    svg.recolorable-cat[data-palette="ginger-tabby"] .cat__tail-tip { opacity: 0; }
+    svg.recolorable-cat[data-palette="ginger-tabby"] .cat__ground-shadow { opacity: 0.17; }
+
+    svg.recolorable-cat[data-palette="tuxedo"] .cat__patches { opacity: 0; }
+    svg.recolorable-cat[data-palette="tuxedo"] .cat__stripes { opacity: 0.12; }
+    svg.recolorable-cat[data-palette="tuxedo"] .cat__socks { opacity: 1; }
+    svg.recolorable-cat[data-palette="tuxedo"] .cat__blaze { opacity: 1; }
+    svg.recolorable-cat[data-palette="tuxedo"] .cat__points { opacity: 0; }
+    svg.recolorable-cat[data-palette="tuxedo"] .cat__tail-tip { opacity: 0; }
+    svg.recolorable-cat[data-palette="tuxedo"] .cat__ground-shadow { opacity: 0.24; }
+
+    svg.recolorable-cat[data-palette="gray-tabby"] .cat__patches { opacity: 0; }
+    svg.recolorable-cat[data-palette="gray-tabby"] .cat__stripes { opacity: 1; }
+    svg.recolorable-cat[data-palette="gray-tabby"] .cat__socks { opacity: 0.58; }
+    svg.recolorable-cat[data-palette="gray-tabby"] .cat__blaze { opacity: 0.1; }
+    svg.recolorable-cat[data-palette="gray-tabby"] .cat__points { opacity: 0; }
+    svg.recolorable-cat[data-palette="gray-tabby"] .cat__tail-tip { opacity: 0; }
+    svg.recolorable-cat[data-palette="gray-tabby"] .cat__ground-shadow { opacity: 0.19; }
+
+    svg.recolorable-cat[data-palette="siamese"] .cat__patches { opacity: 0; }
+    svg.recolorable-cat[data-palette="siamese"] .cat__stripes { opacity: 0.12; }
+    svg.recolorable-cat[data-palette="siamese"] .cat__socks { opacity: 0; }
+    svg.recolorable-cat[data-palette="siamese"] .cat__blaze { opacity: 0; }
+    svg.recolorable-cat[data-palette="siamese"] .cat__points { opacity: 1; }
+    svg.recolorable-cat[data-palette="siamese"] .cat__tail-tip { opacity: 0; }
+    svg.recolorable-cat[data-palette="siamese"] .cat__ground-shadow { opacity: 0.18; }
+
+    svg.recolorable-cat[data-palette="fantasy"] .cat__patches { opacity: 1; }
+    svg.recolorable-cat[data-palette="fantasy"] .cat__stripes { opacity: 0.4; }
+    svg.recolorable-cat[data-palette="fantasy"] .cat__socks { opacity: 1; }
+    svg.recolorable-cat[data-palette="fantasy"] .cat__blaze { opacity: 0.72; }
+    svg.recolorable-cat[data-palette="fantasy"] .cat__points { opacity: 0; }
+    svg.recolorable-cat[data-palette="fantasy"] .cat__tail-tip { opacity: 1; }
+    svg.recolorable-cat[data-palette="fantasy"] .cat__ground-shadow { opacity: 0.2; }
+
+    /*
+      CUSTOM PALETTE
+      Set data-palette="custom", then edit only the values in this block.
+    */
+    svg.recolorable-cat[data-palette="custom"] .cat__fur-base { fill: #8b5a3c; }
+    svg.recolorable-cat[data-palette="custom"] .cat__fur-shadow { fill: #68412d; }
+    svg.recolorable-cat[data-palette="custom"] .cat__patch-one { fill: #c8875c; }
+    svg.recolorable-cat[data-palette="custom"] .cat__patch-two { fill: #4b342c; }
+    svg.recolorable-cat[data-palette="custom"] .cat__light-fur { fill: #f2d4b5; }
+    svg.recolorable-cat[data-palette="custom"] .cat__point-fill { fill: #4b342c; }
+    svg.recolorable-cat[data-palette="custom"] .cat__inner-ear { fill: #db9d9d; }
+    svg.recolorable-cat[data-palette="custom"] .cat__eye { fill: #75b5a0; }
+    svg.recolorable-cat[data-palette="custom"] .cat__pupil { fill: #201b19; }
+    svg.recolorable-cat[data-palette="custom"] .cat__nose { fill: #b85f6c; }
+    svg.recolorable-cat[data-palette="custom"] .cat__outline,
+    svg.recolorable-cat[data-palette="custom"] .cat__feature-line { stroke: #3e2c27; }
+    svg.recolorable-cat[data-palette="custom"] .cat__mouth-line { stroke: #73464b; }
+    svg.recolorable-cat[data-palette="custom"] .cat__stripe-line { stroke: #503025; }
+    svg.recolorable-cat[data-palette="custom"] .cat__whisker-line { stroke: #554642; }
+    svg.recolorable-cat[data-palette="custom"] .cat__whisker-dot { fill: #554642; }
+    svg.recolorable-cat[data-palette="custom"] .cat__collar { fill: #3d8f8a; }
+    svg.recolorable-cat[data-palette="custom"] .cat__collar-light { fill: #79c6be; }
+    svg.recolorable-cat[data-palette="custom"] .cat__tag { fill: #eec34a; }
+    svg.recolorable-cat[data-palette="custom"] .cat__tag-light { fill: #fff0a0; }
+    svg.recolorable-cat[data-palette="custom"] .cat__ground-shadow { fill: #3d2d28; }
+    svg.recolorable-cat[data-palette="custom"] .cat__patches { opacity: 0.25; }
+    svg.recolorable-cat[data-palette="custom"] .cat__stripes { opacity: 0.75; }
+    svg.recolorable-cat[data-palette="custom"] .cat__socks { opacity: 1; }
+    svg.recolorable-cat[data-palette="custom"] .cat__blaze { opacity: 0.35; }
+    svg.recolorable-cat[data-palette="custom"] .cat__points { opacity: 0; }
+    svg.recolorable-cat[data-palette="custom"] .cat__tail-tip { opacity: 0.3; }
+    svg.recolorable-cat[data-palette="custom"] .cat__ground-shadow { opacity: 0.2; }
+  </style>
+
+  <defs>
+    <path
+      id="recolorable-cat-tail-shape"
+      d="M548 635 C631 690 724 651 716 561 C711 508 675 469 630 468 C593 467 568 489 572 518 C575 544 600 560 625 551 C648 542 665 556 664 579 C663 618 620 635 567 609 Z"
+    />
+    <path
+      id="recolorable-cat-body-shape"
+      d="M400 316 C307 316 251 383 237 484 C222 591 256 674 333 708 C373 726 427 726 467 708 C544 674 578 591 563 484 C549 383 493 316 400 316 Z"
+    />
+    <path
+      id="recolorable-cat-head-shape"
+      d="M271 180 L249 68 C246 51 254 46 268 56 L349 109 C381 97 419 97 451 109 L532 56 C546 46 554 51 551 68 L529 180 C548 214 552 253 541 291 C524 349 470 381 400 381 C330 381 276 349 259 291 C248 253 252 214 271 180 Z"
+    />
+    <path
+      id="recolorable-cat-left-leg-shape"
+      d="M315 466 C294 524 294 618 311 687 C318 716 354 721 371 699 C385 680 378 625 371 559 C365 501 349 469 315 466 Z"
+    />
+    <path
+      id="recolorable-cat-right-leg-shape"
+      d="M485 466 C506 524 506 618 489 687 C482 716 446 721 429 699 C415 680 422 625 429 559 C435 501 451 469 485 466 Z"
+    />
+
+    <clipPath id="recolorable-cat-tail-clip">
+      <use href="#recolorable-cat-tail-shape" />
+    </clipPath>
+    <clipPath id="recolorable-cat-body-clip">
+      <use href="#recolorable-cat-body-shape" />
+    </clipPath>
+    <clipPath id="recolorable-cat-head-clip">
+      <use href="#recolorable-cat-head-shape" />
+    </clipPath>
+    <clipPath id="recolorable-cat-left-leg-clip">
+      <use href="#recolorable-cat-left-leg-shape" />
+    </clipPath>
+    <clipPath id="recolorable-cat-right-leg-clip">
+      <use href="#recolorable-cat-right-leg-shape" />
+    </clipPath>
+  </defs>
+
+  <ellipse class="cat__ground-shadow" cx="400" cy="724" rx="245" ry="28" />
+
+  <g data-part="tail" aria-label="tail">
+    <use href="#recolorable-cat-tail-shape" class="cat__fur-base" />
+    <g clip-path="url(#recolorable-cat-tail-clip)">
+      <path class="cat__fur-shadow" d="M541 631 C611 661 670 637 678 596 C686 651 629 694 548 656 Z" opacity="0.56" />
+      <g class="cat__stripes">
+        <path class="cat__stripe-line" d="M681 493 C660 519 650 540 651 566" fill="none" stroke-width="25" />
+        <path class="cat__stripe-line" d="M710 526 C681 548 669 570 670 600" fill="none" stroke-width="25" />
+        <path class="cat__stripe-line" d="M714 575 C685 592 674 613 669 635" fill="none" stroke-width="25" />
+      </g>
+      <path class="cat__point-fill cat__points" d="M676 466 C726 490 745 549 716 601 L661 579 C667 554 651 540 627 551 C610 557 593 551 583 539 C604 511 634 484 676 466 Z" />
+      <path class="cat__patch-two cat__tail-tip" d="M670 622 C648 646 611 653 570 631 L548 607 C596 634 630 623 648 600 Z" />
+    </g>
+    <use href="#recolorable-cat-tail-shape" class="cat__outline" />
+  </g>
+
+  <g data-part="torso" aria-label="body">
+    <use href="#recolorable-cat-body-shape" class="cat__fur-base" />
+    <g clip-path="url(#recolorable-cat-body-clip)">
+      <path class="cat__fur-shadow" d="M494 343 C559 392 586 486 564 592 C550 661 505 709 450 727 C502 648 503 550 482 461 C469 408 465 370 494 343 Z" opacity="0.58" />
+      <g class="cat__patches">
+        <path class="cat__patch-one" d="M235 422 C270 363 332 351 370 391 C400 423 377 472 332 486 C282 501 247 480 235 422 Z" />
+        <path class="cat__patch-two" d="M476 472 C534 442 578 478 579 545 C579 606 542 635 493 616 C452 600 442 555 462 511 C466 496 470 483 476 472 Z" />
+        <path class="cat__patch-one" d="M298 625 C331 594 376 611 383 655 C388 693 356 726 314 717 C279 710 275 650 298 625 Z" opacity="0.86" />
+      </g>
+      <g class="cat__stripes" fill="none" stroke-width="15" stroke-linecap="round">
+        <path class="cat__stripe-line" d="M263 434 C291 446 309 457 323 480" />
+        <path class="cat__stripe-line" d="M253 480 C282 488 304 500 318 520" />
+        <path class="cat__stripe-line" d="M537 428 C510 443 495 459 486 481" />
+        <path class="cat__stripe-line" d="M549 476 C522 488 505 503 494 524" />
+      </g>
+    </g>
+    <use href="#recolorable-cat-body-shape" class="cat__outline" />
+    <path class="cat__light-fur" d="M400 341 C385 365 360 370 360 394 C343 400 349 425 370 439 C357 461 365 490 383 509 L400 530 L417 509 C435 490 443 461 430 439 C451 425 457 400 440 394 C440 370 415 365 400 341 Z" />
+    <path class="cat__outline cat__stroke-7" d="M400 341 C385 365 360 370 360 394 C343 400 349 425 370 439 C357 461 365 490 383 509 L400 530 L417 509 C435 490 443 461 430 439 C451 425 457 400 440 394 C440 370 415 365 400 341 Z" />
+  </g>
+
+  <g data-part="legs" aria-label="front legs">
+    <g data-part="left-leg">
+      <use href="#recolorable-cat-left-leg-shape" class="cat__fur-base" />
+      <g clip-path="url(#recolorable-cat-left-leg-clip)">
+        <path class="cat__fur-shadow" d="M347 464 C376 519 384 654 359 715 L388 710 L391 468 Z" opacity="0.35" />
+        <path class="cat__point-fill cat__points" d="M286 592 C317 574 360 583 387 611 L390 731 L286 731 Z" />
+        <path class="cat__light-fur cat__socks" d="M291 650 C320 636 357 640 382 659 L386 731 L292 731 Z" />
+      </g>
+      <use href="#recolorable-cat-left-leg-shape" class="cat__outline" />
+    </g>
+    <g data-part="right-leg">
+      <use href="#recolorable-cat-right-leg-shape" class="cat__fur-base" />
+      <g clip-path="url(#recolorable-cat-right-leg-clip)">
+        <path class="cat__fur-shadow" d="M453 464 C424 519 416 654 441 715 L412 710 L409 468 Z" opacity="0.35" />
+        <path class="cat__point-fill cat__points" d="M514 592 C483 574 440 583 413 611 L410 731 L514 731 Z" />
+        <path class="cat__light-fur cat__socks" d="M509 650 C480 636 443 640 418 659 L414 731 L508 731 Z" />
+      </g>
+      <use href="#recolorable-cat-right-leg-shape" class="cat__outline" />
+    </g>
+  </g>
+
+  <g data-part="collar" aria-label="collar">
+    <path class="cat__collar" d="M338 352 C352 338 448 338 462 352 C468 358 466 372 456 378 L400 392 L344 378 C334 372 332 358 338 352 Z" />
+    <path class="cat__collar-light" d="M352 348 C368 340 432 340 448 348 C444 354 400 360 356 354 Z" opacity="0.85" />
+    <circle class="cat__tag" cx="400" cy="404" r="18" />
+    <ellipse class="cat__tag-light" cx="394" cy="398" rx="6" ry="4" />
+    <circle class="cat__outline" cx="400" cy="404" r="18" fill="none" />
+  </g>
+
+  <g data-part="head" aria-label="head">
+    <use href="#recolorable-cat-head-shape" class="cat__fur-base" />
+    <g clip-path="url(#recolorable-cat-head-clip)">
+      <path class="cat__fur-shadow" d="M470 120 C530 170 548 250 520 310 C490 360 430 378 400 378 L400 200 Z" opacity="0.42" />
+      <g class="cat__patches">
+        <path class="cat__patch-one" d="M248 70 C262 48 290 70 338 112 C300 150 250 170 240 120 Z" />
+        <path class="cat__patch-two" d="M552 70 C538 48 510 70 462 112 C500 160 560 175 560 120 Z" />
+      </g>
+      <g class="cat__stripes" fill="none" stroke-width="12" stroke-linecap="round">
+        <path class="cat__stripe-line" d="M300 150 C318 168 328 188 330 210" />
+        <path class="cat__stripe-line" d="M500 150 C482 168 472 188 470 210" />
+      </g>
+      <path class="cat__light-fur cat__blaze" d="M400 118 C388 150 382 188 388 230 C394 248 406 248 412 230 C418 188 412 150 400 118 Z" />
+      <path class="cat__point-fill cat__points" d="M249 70 L268 56 L349 109 L271 180 C252 214 248 253 259 291 C248 220 238 140 249 70 Z" opacity="0.92" />
+      <path class="cat__point-fill cat__points" d="M551 70 L532 56 L451 109 L529 180 C548 214 552 253 541 291 C552 220 562 140 551 70 Z" opacity="0.92" />
+    </g>
+    <path class="cat__inner-ear" d="M268 78 L338 118 L278 168 Z" />
+    <path class="cat__inner-ear" d="M532 78 L462 118 L522 168 Z" />
+
+    <g class="cat__expression-layer cat__expression--neutral">
+      <ellipse class="cat__eye" cx="348" cy="242" rx="28" ry="24" />
+      <ellipse class="cat__eye" cx="452" cy="242" rx="28" ry="24" />
+      <ellipse class="cat__pupil" cx="348" cy="246" rx="12" ry="16" />
+      <ellipse class="cat__pupil" cx="452" cy="246" rx="12" ry="16" />
+      <circle class="cat__eye-glint" cx="356" cy="234" r="6" />
+      <circle class="cat__eye-glint" cx="460" cy="234" r="6" />
+      <path class="cat__mouth-line cat__feature-line" d="M382 302 C390 312 400 312 400 302 C400 312 410 312 418 302" fill="none" />
+    </g>
+    <g class="cat__expression-layer cat__expression--happy">
+      <path class="cat__feature-line" d="M322 246 C338 228 362 228 378 246" />
+      <path class="cat__feature-line" d="M422 246 C438 228 462 228 478 246" />
+      <path class="cat__mouth-line cat__feature-line" d="M372 298 C388 322 412 322 428 298" fill="none" />
+    </g>
+
+    <path class="cat__nose" d="M400 278 L388 294 L412 294 Z" />
+    <circle class="cat__whisker-dot" cx="372" cy="292" r="3.2" />
+    <circle class="cat__whisker-dot" cx="428" cy="292" r="3.2" />
+    <path class="cat__whisker-line cat__stroke-4" d="M360 288 L262 268" fill="none" />
+    <path class="cat__whisker-line cat__stroke-4" d="M360 296 L250 296" fill="none" />
+    <path class="cat__whisker-line cat__stroke-4" d="M362 304 L264 326" fill="none" />
+    <path class="cat__whisker-line cat__stroke-4" d="M440 288 L538 268" fill="none" />
+    <path class="cat__whisker-line cat__stroke-4" d="M440 296 L550 296" fill="none" />
+    <path class="cat__whisker-line cat__stroke-4" d="M438 304 L536 326" fill="none" />
+    <use href="#recolorable-cat-head-shape" class="cat__outline" />
+  </g>
+</svg>
+  </template>
+  <script src="/js/common.js"></script>
+  <script src="/js/feedthecats.js"></script>
+</body>
+</html>

@@ -47,6 +47,17 @@
       rankMode: "perNumber"
     },
     {
+      id: "feedthecats",
+      title: "Feed the Cats",
+      path: "/games/feedthecats.html",
+      topic: "subtraction",
+      axisIndex: 1,
+      axisLabel: "Feed Cats",
+      blurb: "Feed number cards to hungry cats to complete doubles subtraction facts. Climb C→S ranks!",
+      howTo: "Each cat shows a subtraction with a missing number. The missing number is exactly half of the top (14 − 7 because 7 + 7 = 14). Select a card from your hand of three, then play it into a blank — or drag it there. Finish 12 real doubles to clear a round; three rounds rank you up. At A and S some cats are odd-number distractors that can never be doubles — skip those. S adds a 120-second timer; running out drops you to A.",
+      rankMode: "single"
+    },
+    {
       id: "maze",
       title: "Galaxy Maze",
       path: "/games/maze.html",

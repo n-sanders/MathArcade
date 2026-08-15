@@ -76,6 +76,7 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 | Galaxy Maze | Multiplication |
 | Lava Leap | Skip counting up |
 | Avalanche Run | Skip counting down |
+| Feed the Cats | Doubles subtraction |
 | Prime Search | Prime recognition |
 | Calendar Scramble | Month order (1st–12th) |
 | Memory Match Math | Match expressions with answers |
