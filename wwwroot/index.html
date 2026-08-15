@@ -24,9 +24,10 @@
     </header>
 
     <main>
-    <section class="skill-radar" id="skill-radar" aria-label="Skill snapshots"></section>
-
-    <nav class="topic-nav" id="topic-nav" aria-label="Topics"></nav>
+    <section class="topic-board">
+      <div class="skill-radar" id="skill-radar" aria-label="Skill snapshots"></div>
+      <nav class="topic-nav" id="topic-nav" aria-label="Topics"></nav>
+    </section>
 
     <div class="layout">
       <aside class="activity-list" id="activity-list" aria-label="Activities">
@@ -196,6 +197,7 @@
           btn.className = "activity-btn" + (game.id === selectedId ? " active" : "");
           btn.dataset.id = game.id;
           if (game.bonus) btn.classList.add("bonus");
+          // Rank badges still live on the activity button: [data-rank-slot] is filled by applyRankUi.
           btn.innerHTML =
             `<span class="title-row">` +
               `<span class="title">${escapeHtml(game.title)}</span>` +
@@ -304,6 +306,7 @@
         return "";
       }
 
+      // After each list rebuild and progress refresh, paint C→S badges into [data-rank-slot].
       function applyRankUi() {
         listItemsEl.querySelectorAll(".activity-btn").forEach((btn) => {
           const game = GAMES.find((g) => g.id === btn.dataset.id);
