@@ -4,7 +4,7 @@ Scratch pad for concepts that are not ready to build yet. One-liners are fine; f
 
 **Provenance:** Tag **`[AI]`** on ideas from assistant brainstorms; untagged entries are organic (yours).
 
-**Shipped today:** Make 10, Galaxy Maze, Lava Leap, Avalanche Run, Prime Search, Memory Match Math, Calendar Scramble, Dino Dash (daily bonus) (see `wwwroot/js/common.js` → `GAMES`).
+**Shipped today:** Make 10, Galaxy Maze, Lava Leap, Avalanche Run, Feed the Cats, Prime Search, Memory Match Math, Calendar Scramble, Dino Dash (daily bonus) (see `wwwroot/js/common.js` → `GAMES`).
 
 ---
 
