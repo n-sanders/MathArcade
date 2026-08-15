@@ -116,16 +116,22 @@
   let sfxGain = null;
 
   function ensureAudio() {
-    if (!audio) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return null;
-      audio = new Ctx();
-      sfxGain = audio.createGain();
-      sfxGain.gain.value = 0.9;
-      sfxGain.connect(audio.destination);
+    try {
+      if (!audio) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        audio = new Ctx();
+        sfxGain = audio.createGain();
+        sfxGain.gain.value = 0.9;
+        sfxGain.connect(audio.destination);
+      }
+      if (audio.state === "suspended") audio.resume();
+      return audio;
+    } catch (_) {
+      audio = null;
+      sfxGain = null;
+      return null;
     }
-    if (audio.state === "suspended") audio.resume();
-    return audio;
   }
 
   function noiseBuffer(seconds) {
@@ -679,7 +685,8 @@
       void station.el.offsetWidth;
       station.el.classList.add("shake");
       playWrong();
-      selectCard(null);
+      selectedCardId = null;
+      renderHand();
       return;
     }
 
@@ -899,6 +906,6 @@
   updateHud();
   loadRank().then(() => {
     updateHud();
-    showStartOverlay();
+    if (mode === "idle") showStartOverlay();
   });
 })();
