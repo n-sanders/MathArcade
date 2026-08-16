@@ -2,7 +2,7 @@
 
 Instructions for the agent that will **mine MathArcade and produce the pattern library** used later to invent standalone games. **This distillation step may spend freely.** Read every game end-to-end. Prefer a superb 80-line snippet over a vague “see memorymatch.js.”
 
-Do **not** build a shared runtime, npm package, or `import { GameShell }`. Games stay portable: one HTML file + one JS file a human could copy out of the arcade. The library is **copy-paste snippets plus notes**. Distill by comparing titles; **finished skunkworks files must not name those titles** (create-agents cannot see this repo).
+Do **not** build a shared runtime, npm package, or `import { GameShell }`. Games stay portable: one HTML file + one JS file a human could copy out of the arcade. The library is **worked examples to derive from**, plus notes — not a kit to dump unchanged. Distill by comparing titles; **finished skunkworks files must not name those titles** (create-agents cannot see this repo).
 
 The skunkworks create-agent must be able to produce standalone games without reading the MathArcade repo. Your artifacts are what it reads instead.
 
@@ -11,7 +11,7 @@ The skunkworks create-agent must be able to produce standalone games without rea
 ## Mission
 
 1. Audit every shipped game and take the **best** design for each UI, input, juice, and session element — not an average, not one “canonical game.”
-2. Write those winners as small, themed-with-variables snippets a future agent can paste without opening the source title.
+2. Write those winners as small, themed-with-variables snippets a future agent can **derive from** without opening the source title. Header each snippet with what to reinvent (copy, palette, scale, juice), not “paste this.”
 3. Document the **scoring / progress / catalog contract** exactly, so the game is ready for a separate integration step for a new, finished standalone game on MathArcade without needing to modify the standalone game schema.
 
 Success looks like: a create-agent in a **separate workspace** can ship a new full-screen game from `AGENTS.md` + `PATTERNS.md` + following the wire persist/score from `CONTRACT.md`.
@@ -35,7 +35,7 @@ Success looks like: a create-agent in a **separate workspace** can ship a new fu
 Write finished artifacts as **a few large files** (agents ingest them in one or two reads; do not shard into a folder per element). Header comments: what to change, CSS variables, when **not** to use — **no source-title names**.
 
 ```
-skunkworks/AGENTS.md       Create-agent rules. Short. “Read PATTERNS.md, paste chrome + one mechanic.”
+skunkworks/AGENTS.md       Create-agent rules. Short. Invent a unique complementary fantasy; derive chrome + one mechanic; do not dump snippets.
 skunkworks/CONTRACT.md     Scoring, progress, catalog, radar, daily bonus. No title names.
 skunkworks/INTEGRATION.md  Cheap-agent checklist. No restyle. No title names.
 skunkworks/PATTERNS.md     Whole library: chrome (always) + mechanics (pick one).
@@ -289,7 +289,7 @@ Pagehide: if the session was real play, use `keepalive: true` so closing the tab
 
 ## Create-agent vs integrate-agent (write this into AGENTS.md / INTEGRATION.md)
 
-**Create (expensive model, separate workspace):** Invent the game. Paste snippets. Theme with CSS variables. Ship HTML+JS that run opened as static files. Do not read MathArcade. Do not launch an explore subagent. Do not open a previous full game “for juice.” One conversation; stop shortly after the files exist.
+**Create (expensive model, separate workspace):** Invent a unique complementary fantasy. Derive chrome and one mechanic from `PATTERNS.md` (inspiration, not a paste kit). Theme with CSS variables, rewrite copy, meet kid-scale sizes, write a unique short music bed. Ship HTML+JS that run opened as static files. Do not read MathArcade. Do not launch an explore subagent. Do not open a previous full game “for juice.” One conversation; stop shortly after the files exist.
 
 **Integrate (cheap model, this repo):** Append `GAMES` entry; drop files into `wwwroot/games/` and `wwwroot/js/`; add `common.js` script; wire stubs to `MathArcade`; keep class names. **No restyle, no juice pass, no “match the other games.”**
 
@@ -299,12 +299,14 @@ If a snippet needs arcade knowledge, that knowledge belongs in `CONTRACT.md`, no
 
 ## Quality bar for snippets
 
-- Header: what to change, CSS variables, when **not** to use it. No shipped-title names in skunkworks files.
+- Header: what to reinvent (copy, palette, scale, juice), CSS variables, when **not** to use it. No shipped-title names in skunkworks files.
+- Snippets are inspiration. Tell the create-agent to derive a complementary flavor — not to paste chrome/mechanics unchanged.
 - Runnable fragment or drop-in functions; not “adapt lines 872–1140.”
-- Theme only through variables (`--ink`, `--accent`, `--paper`, …). Rank badge hues included.
+- Theme only through variables (`--ink`, `--accent`, `--paper`, `--topbar-bg`, `--overlay-dim`, `--kicker-bg`, …). Rank badge hues included. Light vs dark chrome must both work.
+- Kid scale: hero type, hit targets (~3.25rem+), mascots (~120px / ~22% of stage), few on-screen choices. Call out pixel sizes that would look like stickers.
 - Strip game-specific math, copy, and palettes except as comments/examples.
 - Prefer ~40–200 lines per snippet. If a “snippet” exceeds ~400 lines, split (shell vs audio vs juice).
-- Web Audio: one helper snippet + a **tiny** example patch (a few notes), not nine full soundtracks.
+- Web Audio: helper shape + a skeleton bed the create-agent must replace (chords/BPM/waveform). Not nine full soundtracks, and not “loop the example SFX.”
 - Reduced-motion: every juice snippet must honor `prefers-reduced-motion`.
 
 ---

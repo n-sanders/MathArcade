@@ -1,8 +1,48 @@
 # Pattern library
 
-Ingest this whole file. **Chrome** ships in every math game. **Mechanics:** pick one heading (two only if they compose). If a heading is not here, it does not exist.
+Ingest this whole file. Snippets are **worked examples to derive from**, not copy-paste templates. Your game should be recognizable as the same arcade (class names, overlay shape, ranks) and **obviously its own place** (theme, copy, scale, juice).
 
-Theme only through CSS variables (`--ink`, `--accent`, `--paper`, rank hues). No shared CSS file, no `import`, no `window.MathArcade`.
+**Chrome** ideas belong in every math game. **Mechanics:** pick one heading (two only if they compose) and reinvent it. If a heading is not here, it does not exist.
+
+Theme only through CSS variables. No shared CSS file, no `import`, no `window.MathArcade`. Wrap your JS in an IIFE.
+
+---
+
+# How to derive (read this first)
+
+## Complementary flavor
+
+Keep the family: Fredoka + Nunito, full-viewport `game-app`, glass-ish topbar grid, dialog overlay, C→S badges, sound toggle, persist stubs.
+
+Change the personality: palette, stage atmosphere, kicker/title/fail/win lines, SFX and a short unique music bed, motion, and **how large things are on screen**. A dark lava climb and a bright card party share classes; they do not share cream headers or pink kickers.
+
+**Light vs dark shell** — same classes, different tokens. If the stage is a night sky, magma, ice, or sunset, retint `--topbar-bg`, `--paper`, `--ink`, `--overlay-dim`, `--kicker-bg` so chrome belongs to that world. Do not leave a light party header on a dark stage.
+
+**Copy** — rewrite every string. Sample overlay text below is a *shape* (“short rules, then rank-up line”), not the lines to ship.
+
+**Audio** — keep the `ensureAudio` / `playTone` *shape*. Write your own 4–8 chord bed and a handful of themed SFX. Do not ship the example beep arpeggio as the soundtrack.
+
+## Kid scale
+
+Kids play at arm’s length, often on a phone or a tablet on a table. The leftover viewport after the topbar is the **stage** — fill it. Tiny stickers and dense keypads fail this arcade.
+
+| Thing | Target | Too small |
+|---|---|---|
+| Hero prompt / the number they are solving | `clamp(2.5rem, 8vw, 4.5rem)` | Anything under ~2rem |
+| Overlay title | `clamp(2.15rem, 8vw, 4rem)` (already in overlay example) | A quiet `<h2>` |
+| Primary CTA | min-height **3.25rem**, min-width ~12rem | Text-only links |
+| Answer / card / platform hit target | **min 3.25rem × 3.25rem** (bigger is better; cards often ~100–120px) | 44px “minimum touch” |
+| Character / vehicle if it is part of the fantasy | **≥ 22% of stage height** or **min ~120px** on the long side | A 46px CSS doodle in the corner |
+| HUD chip | min-height ~2.55rem; value ~1.1rem | Micro labels |
+| Simultaneous tap targets on a phone | **about 3–8** in the playfield | A 19-button calculator pad |
+
+Use `clamp()`, `%` of `#stage`, or `dvh` — not one-off pixel sizes that die on a tablet. If you need many possible answers, put **few on screen** (neighbors, a row of platforms, a short hand) and rotate the rest. Do not expose the whole bank.
+
+## Playfield
+
+The puzzle lives in a **place**, not in a toolbar. Platforms, cards, stars, slots, a lit board — the answers should feel like objects in that place. A wrapping grid of identical number keys is a last resort, and if you use one it still has to meet Kid scale.
+
+Stacking inside `#stage` (bottom → top): playfield `z-index: 2` → timer curtain `6` (paints **over** the field, `pointer-events: none`) → effects `7` → live message `8` → overlay `15`.
 
 ---
 
@@ -12,8 +52,8 @@ Theme only through CSS variables (`--ink`, `--accent`, `--paper`, rank hues). No
 
 Full-viewport lock, fonts, tokens, reduced-motion kill. Do not link a shared stylesheet. Omit `common.js` until integrate.
 
-**Change:** title, `--accent` tokens, stage inner markup, script filename.
-**When not:** a canvas bonus may skip the frosted stage frame, but still use `game-app` + `100dvh`.
+**Derive:** retint the token block for *this* world (including light vs dark chrome). Title like `Your Game · MathArcade`. Put your playfield inside `#stage`. Wrap JS in an IIFE.
+**When not:** a canvas bonus may skip frosted ornaments, but still use `game-app` + `100dvh` + Kid scale.
 
 ```html
 <!DOCTYPE html>
@@ -22,7 +62,7 @@ Full-viewport lock, fonts, tokens, reduced-motion kill. Do not link a shared sty
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#7c4dff" />
-  <title>Your Game</title>
+  <title>Your Game · MathArcade</title>
   <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -39,6 +79,19 @@ Full-viewport lock, fonts, tokens, reduced-motion kill. Do not link a shared sty
       --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
       --font-body: "Nunito", system-ui, sans-serif;
       --topbar-height: 4.15rem;
+      --topbar-bg: var(--paper);
+      --topbar-ink: var(--accent-deep);
+      --overlay-dim: color-mix(in srgb, var(--accent) 22%, transparent);
+      --kicker-bg: color-mix(in srgb, var(--accent-hot) 18%, white);
+      --kicker-fg: var(--accent-hot);
+      --stage-ink: var(--ink);
+      --chip-bg: color-mix(in srgb, var(--paper) 82%, white);
+      /* Dark-stage example — retint chrome so it belongs to the world, do not leave a cream header:
+         --paper: rgba(16, 20, 42, 0.78); --ink: #f3eefc; --cream: #12162c;
+         --topbar-bg: rgba(10, 14, 32, 0.72); --topbar-ink: #efe6ff;
+         --overlay-dim: rgba(6, 8, 22, 0.55);
+         --kicker-bg: color-mix(in srgb, var(--accent) 32%, #16102a); --kicker-fg: #ffe8a8;
+         --chip-bg: rgba(255, 255, 255, 0.1); */
     }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
@@ -60,7 +113,8 @@ Full-viewport lock, fonts, tokens, reduced-motion kill. Do not link a shared sty
       height: 100dvh;
       overflow: hidden;
     }
-    .game-stage { position: relative; min-height: 0; overflow: hidden; }
+    .game-stage { position: relative; min-height: 0; overflow: hidden; color: var(--stage-ink); }
+    .playfield { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; min-height: 0; }
     .effects { position: absolute; inset: 0; z-index: 7; overflow: hidden; pointer-events: none; }
     .message {
       position: absolute; left: 50%; bottom: 0.8rem; z-index: 8;
@@ -83,6 +137,7 @@ Full-viewport lock, fonts, tokens, reduced-motion kill. Do not link a shared sty
   <div class="game-app">
     <!-- topbar -->
     <main class="game-stage" id="stage">
+      <div class="playfield" id="playfield"><!-- world + large answers; fill the leftover viewport --></div>
       <div class="effects" id="effects" aria-hidden="true"></div>
       <p class="message" id="message" role="status" aria-live="polite" aria-atomic="true"></p>
       <!-- overlay -->
@@ -97,6 +152,8 @@ Full-viewport lock, fonts, tokens, reduced-motion kill. Do not link a shared sty
 
 Back link, title, HUD slot, sound control. Landscape-friendly grid. Never skip the back link on an arcade game.
 
+**Derive:** colors through `--topbar-bg` / `--topbar-ink`. A night or magma stage does not keep a cream glass header.
+
 ```html
 <style>
   .topbar {
@@ -104,20 +161,21 @@ Back link, title, HUD slot, sound control. Landscape-friendly grid. Never skip t
     display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center; gap: 0.8rem;
     padding: 0.55rem clamp(0.65rem, 2vw, 1.4rem);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.65);
-    background: var(--paper);
+    border-bottom: 2px solid color-mix(in srgb, var(--topbar-ink) 12%, transparent);
+    background: var(--topbar-bg);
+    color: var(--topbar-ink);
     backdrop-filter: blur(14px) saturate(1.25);
   }
   .brand { min-width: 0; display: flex; align-items: center; gap: clamp(0.5rem, 1.5vw, 1rem); }
   .back-link {
     display: inline-flex; align-items: center; min-height: 2.35rem;
-    padding: 0.45rem 0.75rem; color: var(--accent-deep);
+    padding: 0.45rem 0.75rem; color: var(--topbar-ink);
     border: 2px solid color-mix(in srgb, var(--accent) 16%, transparent);
-    border-radius: 999px; background: rgba(255, 255, 255, 0.65);
+    border-radius: 999px; background: color-mix(in srgb, var(--topbar-bg) 70%, transparent);
     font-weight: 900; text-decoration: none; white-space: nowrap;
   }
   .game-title {
-    min-width: 0; margin: 0; color: var(--accent-deep);
+    min-width: 0; margin: 0; color: var(--topbar-ink);
     font-family: var(--font-display);
     font-size: clamp(1.15rem, 2.3vw, 1.65rem); font-weight: 700;
     line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -126,9 +184,9 @@ Back link, title, HUD slot, sound control. Landscape-friendly grid. Never skip t
   .sound-toggle {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
     min-width: 2.75rem; min-height: 2.65rem; padding: 0.45rem 0.78rem;
-    color: var(--accent-deep); border-radius: 999px; cursor: pointer; font-weight: 900;
+    color: var(--topbar-ink); border-radius: 999px; cursor: pointer; font-weight: 900;
     border: 2px solid color-mix(in srgb, var(--accent) 15%, transparent);
-    background: rgba(255, 255, 255, 0.82);
+    background: color-mix(in srgb, var(--topbar-bg) 82%, transparent);
   }
   .sound-toggle[aria-pressed="false"] { color: var(--ink-soft); opacity: 0.75; }
   @media (max-width: 780px) {
@@ -167,7 +225,7 @@ Back link, title, HUD slot, sound control. Landscape-friendly grid. Never skip t
 
 Labeled uppercase chips. Put `rank-C`…`rank-S` on the **value** node, not the chip.
 
-**Change:** extra chips (round, pairs, combo). Per-number games add `×n · rank`. Bonus uses Speed / HI / Score with no letter.
+**Derive:** extra chips (round, pairs, combo). Per-number games add `×n · rank`. Bonus uses Speed / HI / Score with no letter. Chip fill is `--chip-bg` so dark shells do not keep opaque white pills.
 
 ```html
 <style>
@@ -176,7 +234,7 @@ Labeled uppercase chips. Put `rank-C`…`rank-S` on the **value** node, not the 
     display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 0.28rem;
     min-height: 2.55rem; padding: 0.38rem 0.72rem; border-radius: 15px;
     border: 2px solid color-mix(in srgb, var(--accent) 12%, transparent);
-    background: rgba(255, 255, 255, 0.78); color: var(--ink-soft);
+    background: var(--chip-bg); color: var(--ink-soft);
     font-size: 0.76rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.055em;
   }
   .hud-value {
@@ -206,11 +264,13 @@ Dialog shell: kicker, title, copy, extra, stats, primary button. Mutate these no
 
 **Class names are a contract:** `overlay`, `overlay-card`, `overlay-kicker`, `#overlay-title`, `#overlay-copy`, `#overlay-extra`, `#overlay-stats`, `.primary-btn`.
 
+**Derive:** rewrite kicker, title, rules, fail, win, and rank-up lines for *this* world. Dim and kicker colors come from `--overlay-dim` / `--kicker-bg` / `--kicker-fg` — never a leftover pink chip on a dark stage. Sample strings below are a *shape*, not lines to ship. If the shell is dark, mix overlay-stat fills toward `--paper`, not `white`.
+
 ```html
 <style>
   .overlay {
     position: absolute; inset: 0; z-index: 15; display: grid; place-items: center; padding: 1rem;
-    background: rgba(109, 70, 188, 0.22); backdrop-filter: blur(8px) saturate(1.15);
+    background: var(--overlay-dim); backdrop-filter: blur(8px) saturate(1.15);
     transition: opacity 260ms ease, visibility 260ms ease;
   }
   .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -226,7 +286,7 @@ Dialog shell: kicker, title, copy, extra, stats, primary button. Mutate these no
   }
   .overlay-kicker {
     display: inline-block; margin-bottom: 0.55rem; padding: 0.3rem 0.78rem;
-    color: var(--accent-hot); border-radius: 999px; background: #ffe3f1;
+    color: var(--kicker-fg); border-radius: 999px; background: var(--kicker-bg);
     font-size: 0.76rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;
   }
   .overlay h2 {
@@ -258,7 +318,7 @@ Dialog shell: kicker, title, copy, extra, stats, primary button. Mutate these no
   <div class="overlay-card">
     <span class="overlay-kicker" id="overlay-kicker">How to play</span>
     <h2 id="overlay-title">Your Game</h2>
-    <p class="overlay-copy" id="overlay-copy">Short kid-facing rules. One or two sentences.</p>
+    <p class="overlay-copy" id="overlay-copy">Rewrite this in the voice of the place. One or two kid sentences.</p>
     <div id="overlay-extra"></div>
     <div class="overlay-stats" id="overlay-stats" hidden>
       <div class="overlay-stat"><strong id="stat-a">0</strong><span>Round points</span></div>
@@ -280,9 +340,10 @@ function hideOverlay() {
   overlayEl.setAttribute("aria-hidden", "true");
 }
 function paintStartOverlay() {
+  // Shape only — rewrite every string for this fantasy.
   overlayKickerEl.textContent = "How to play";
   overlayTitleEl.textContent = "Your Game";
-  overlayCopyEl.textContent = "Short rules. Climb C → S.";
+  overlayCopyEl.textContent = "Short rules in this world's voice. Climb C → S.";
   overlayExtraEl.innerHTML = rankLegendHtml();
   overlayStatsEl.hidden = true;
   overlayActionEl.textContent = "Play";
@@ -292,7 +353,7 @@ function paintEndOverlay({ rankedUp, oldRank, rank, failed, demoted, score, sess
   overlayKickerEl.textContent = rankedUp ? "Rank up" : failed ? "Try again" : "Nice work";
   overlayTitleEl.textContent = rankedUp ? "Rank Up!" : failed ? "So close!" : "You did it!";
   overlayCopyEl.textContent = rankedUp
-    ? `The challenge grew — ${oldRank} → ${rank}.`
+    ? `${oldRank} is behind you — ${rank} is the new bar.`
     : failed ? "Take another run whenever you are ready." : "Clear the goal again to keep climbing.";
   const banner = rankedUp
     ? `<div class="rank-up-banner">RANK UP! ${oldRank} → ${rank}</div>`
@@ -367,7 +428,12 @@ Same **class names** everywhere; retint with variables. Do not invent `rank-gold
 
 Never restore rank from `difficultyLevel`. Promotion knobs stay in your game. Integrate replaces `onScore` / `onSessionSave`.
 
+Wrap the **whole JS file** in an IIFE. Keep `rank` / `score` in that closure. Do not assign `window.currentRank` or `window.currentScore`.
+
+**Derive:** `GAME_ID`, `RANK_FLAVOR` labels, promotion knobs. `persistSession` writes **progress before score**.
+
 ```js
+// Whole file lives in an IIFE. Rank/score stay in this closure.
 const GAME_ID = "yourgame";
 const RANK_MODE = "single"; // "single" | "perNumber" | "none"
 const RANKS = ["C", "B", "A", "S"];
@@ -416,18 +482,18 @@ function loadLocalStats() {
 }
 async function persistSession({ rank, score, extra, keepalive }) {
   const stats = RANK_MODE === "none" ? { ...(extra || {}) } : { rank, ...(extra || {}) };
-  await onScore(Math.max(0, Math.floor(score)), { keepalive });
   await onSessionSave({
     difficultyLevel: RANK_MODE === "none" ? 1 : rankLevel(rank),
     stats,
     keepalive
   });
+  await onScore(Math.max(0, Math.floor(score)), { keepalive });
 }
 ```
 
 ## Web Audio
 
-Mute-gated `ensureAudio`, three buses (`master` / `music` / `sfx`), destination-aware `playTone`. Themed note tables stay in *your* `playCorrect` / `playWrong` — not a full soundtrack here.
+Mute-gated `ensureAudio`, three buses (`master` / `music` / `sfx`), destination-aware `playTone`. Keep this *shape*. Invent themed SFX and a short unique bed (4–8 chords, your BPM, your waveform). Do **not** ship silence, and do **not** loop `examplePatch` as the soundtrack.
 
 ```js
 let audioContext = null, masterGain = null, musicGain = null, sfxGain = null;
@@ -491,6 +557,30 @@ function examplePatch(kind) {
     [392, 523, 659, 784].forEach((f, i) => playTone(sfxGain, { type: "triangle", frequency: f, time: now + i * 0.09, duration: 0.28, gain: 0.14 }));
   }
 }
+// Skeleton only — replace chords, BPM, and oscillator type for THIS place.
+function startMusic() {
+  stopMusic();
+  const context = ensureAudio();
+  if (!context || !musicGain) return;
+  musicGain.gain.cancelScheduledValues(context.currentTime);
+  musicGain.gain.setTargetAtTime(0.22, context.currentTime, 0.05);
+  const chords = [
+    [196, 247, 294],
+    [175, 220, 262],
+    [220, 277, 330],
+    [165, 196, 247]
+  ];
+  const beatMs = 720;
+  let step = 0;
+  const playStep = () => {
+    if (!soundEnabled) return;
+    const chord = chords[step % chords.length];
+    chord.forEach((f) => playTone(musicGain, { type: "sine", frequency: f, duration: 1.05, gain: 0.035 }));
+    step += 1;
+  };
+  playStep();
+  musicTimer = setInterval(playStep, beatMs);
+}
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopMusic(); });
 ```
 
@@ -541,18 +631,20 @@ updateSoundControl();
 
 ## Pagehide persist
 
-If the kid actually played (including a fail), flush on `pagehide` with `keepalive: true`. **Progress before score** so a daily-bonus stamp still lands if score sync fails.
+If the kid actually played (including a fail), flush on `pagehide` with `keepalive: true`. **Progress before score** so a daily-bonus stamp still lands if score sync fails. Read rank/score from **closure** variables, not `window`.
 
 ```js
 let sessionDirty = false;
+let currentRank = "C";
+let currentScore = 0;
 function markSessionReal() { sessionDirty = true; }
 function flushSessionOnPageHide() {
   stopMusic();
   if (!sessionDirty) return;
-  const rank = window.currentRank || "C";
-  const score = Math.max(0, Math.floor(window.currentScore || 0));
+  const rank = currentRank || "C";
+  const score = Math.max(0, Math.floor(currentScore || 0));
   const extra = RANK_MODE === "perNumber"
-    ? { ranks: window.ranksBySkip, lastScore: score, won: false }
+    ? { ranks: ranksBySkip, lastScore: score, won: false }
     : { lastScore: score, won: false };
   void persistSession({ rank, score, extra, keepalive: true });
 }
@@ -674,9 +766,65 @@ function spawnSvg(holder, palette) {
 
 # Mechanics (pick one)
 
+Pick **one** heading as inspiration and reinvent it for your fantasy (sizes, art, motion, rules). Two headings only if they clearly compose. Do not drop a snippet in verbatim.
+
+## Answer bank
+
+When the math has many legal answers (factors, multiples, nearby sums), **do not** draw the whole set as a keypad. Put **3–8 large in-world objects** on stage (platforms, stars, stones, doors). Rotate which candidates appear. Meet **Kid scale**.
+
+**Derive:** what the objects *are*, how a miss feels, how the prompt sits in the world.
+**When not:** a true keypad still has to meet hit-target size — then use few keys, huge.
+
+```css
+.hero-prompt {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-weight: 700;
+  line-height: 0.95;
+}
+.mascot {
+  width: min(28vw, 22vh, 180px);
+  min-width: 120px;
+  height: auto;
+}
+.choice-row {
+  display: flex; justify-content: center; align-items: stretch;
+  gap: clamp(0.6rem, 2vw, 1.2rem);
+  width: min(96%, 52rem);
+}
+.choice {
+  flex: 1 1 0;
+  min-width: 3.5rem;
+  min-height: clamp(3.5rem, 14vh, 6.5rem);
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 5vw, 2.6rem);
+  font-weight: 700;
+}
+```
+
+```js
+function pickVisibleChoices(correct, bank, count) {
+  const n = Math.min(Math.max(count || 5, 3), 8);
+  const pool = bank.filter((v) => v !== correct);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  const shown = [correct, ...pool.slice(0, n - 1)];
+  for (let i = shown.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = shown[i]; shown[i] = shown[j]; shown[j] = t;
+  }
+  return shown;
+}
+```
+
 ## Pointer drag
 
 DOM tiles onto slots, with click-to-place fallback (unmoved pointer-up selects; next click on a slot places). Compare `tile.slotId === target.id` — do not assume index identity. Document-level `pointermove`/`pointerup` so the pointer can leave the tile. Wrong slot: bounce home, typically −5.
+
+Tiles and slots must meet **Kid scale** (min ~3.25rem). A 38px-tall chip is too small.
 
 **When not:** canvas wire; flip cards.
 
@@ -761,7 +909,7 @@ document.addEventListener("pointercancel", onPointerUp);
 ```
 
 ```css
-.tile { position: absolute; min-width: 96px; min-height: 38px; touch-action: none; cursor: pointer; z-index: 4; }
+.tile { position: absolute; min-width: 3.5rem; min-height: 3.25rem; touch-action: none; cursor: pointer; z-index: 4; }
 .tile.returning { transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .tile.dragging { z-index: 8; cursor: grabbing; }
 .slot.hot { outline: 3px solid var(--accent); }
@@ -775,7 +923,7 @@ document.addEventListener("pointercancel", onPointerUp);
 
 ## Card flip
 
-3D match/miss board. Cards are `<button>`. **Do not** put `filter` on `.card-inner` — it breaks `preserve-3d`. Not for HUD-only games.
+3D match/miss board. Cards are `<button>`. **Do not** put `filter` on `.card-inner` — it breaks `preserve-3d`. Not for HUD-only games. Default `--card-size: 120px` already meets **Kid scale**; do not shrink below ~100px.
 
 ```html
 <button class="card" type="button" aria-label="Hidden card">
@@ -825,16 +973,18 @@ function resolveMiss() {
 
 ## Tap world
 
-Platforms *are* the answers. Hazard is the timer. One kit: `direction: "up" | "down"` (sign flips, not two engines). Pair with **Per-number ranks** when each factor has its own letter.
+Platforms *are* the answers. Hazard is the timer. One kit: `direction: "up" | "down"` (sign flips, not two engines). Pair with **Per-number ranks** when each factor has its own letter. Reinvent the world (art, gravity feel, fail juice) — do not ship this as a lava clone.
 
 - `up`: hazard rises, camera ~62% down the screen, fail when feet meet hazard.
 - `down`: hazard falls, camera ~38%, fail when hazard meets head.
+
+Player / platforms must meet **Kid scale**: character **≥ 22% of stage height** or min ~120px; each platform is a tap target **min ~3.25rem** tall. `PLAYER_H` is the hit-box height in stage pixels — keep it in that 120px range, not a 46px sticker.
 
 ```js
 const DIRECTION = "up";
 const TARGET_STEPS = 12;
 const RANK_SPEED = { C: 1, B: 1.35, A: 1.75, S: 2.25 };
-const PLAYER_H = 72;
+const PLAYER_H = 120;
 const CAM_BIAS = DIRECTION === "up" ? 0.62 : 0.38;
 
 function correctForRow(rowIdx) {
@@ -1071,7 +1221,7 @@ stage.addEventListener("pointermove", (e) => { if (phase === "hunting") queueBea
 
 ## Hand + slots
 
-Deck → hand of 3 → play into blanks. Drag details live in **Pointer drag**; this is the loop. A/S may include distractor slots no card can solve. S may use the timer **bar** variant (120s, pause on tab hide), not a falling curtain.
+Deck → hand of 3 → play into blanks. Drag details live in **Pointer drag**; this is the loop. A/S may include distractor slots no card can solve. S may use the timer **bar** variant (120s, pause on tab hide), not a falling curtain. Hand cards and slots must meet **Kid scale**.
 
 ```js
 const HAND_SIZE = 3, SLOT_COUNT = 3, PROBLEMS_PER_ROUND = 12, ROUNDS_TO_PROMOTE = 3;
@@ -1112,9 +1262,11 @@ Cover grows down from the top: `height = elapsedFrac * 100%`. Warn ≤33%, criti
 
 **Bar variant (not a curtain):** depleting bar + `m:ss`, pause remaining ms on `visibilitychange`.
 
+Stack **above** the playfield (`z-index: 6`) with `pointer-events: none`. A curtain at `z-index: 1` behind `.playfield { z-index: 2 }` is invisible.
+
 ```css
 #timer-curtain {
-  position: absolute; left: 0; right: 0; top: 0; height: 0%; z-index: 1; pointer-events: none; opacity: 0;
+  position: absolute; left: 0; right: 0; top: 0; height: 0%; z-index: 6; pointer-events: none; opacity: 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hot) 34%, transparent), transparent);
 }
 #timer-curtain.visible { opacity: 1; }
@@ -1201,6 +1353,8 @@ async function checkUnlock() { return true; }
 ## Session length
 
 Not a paste kit. Pick **one** gate; persist a completed **fail**, not only rank-up.
+
+One sitting should feel like **a few minutes**, not a homework packet. Prefer a handful of rounds you can finish, not 12 payloads × 3 rounds. If S uses a clock, scope it to **the current round** (or current climb), not a per-item 25s that repeats twelve times unless the fantasy is explicitly a speed trial.
 
 | Model | Rank up when | Fail / demote |
 |---|---|---|

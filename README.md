@@ -100,7 +100,7 @@ Shipped titles stay one HTML file + one JS file with inline CSS. New ones should
 | [`skunkworks/CONTRACT.md`](skunkworks/CONTRACT.md) | Score vs progress, rank blobs, catalog, radar, daily bonus |
 | [`skunkworks/INTEGRATION.md`](skunkworks/INTEGRATION.md) | Cheap drop-in checklist for this repo |
 
-**Create** (expensive model, skunkworks only): paste chrome from `PATTERNS.md`, pick one mechanic, theme with CSS variables, persist through `onScore` / `onSessionSave`. Ship static HTML+JS. Do not call `MathArcade` or link `games.css`.
+**Create** (expensive model, skunkworks only): invent a unique complementary fantasy; derive chrome and one mechanic from `PATTERNS.md` (do not paste snippets unchanged). Theme with CSS variables, persist through `onScore` / `onSessionSave`. Ship static HTML+JS. Do not call `MathArcade` or link `games.css`.
 
 **Integrate** (cheap model, this repo): copy files into `wwwroot/games/` and `wwwroot/js/`, add `common.js`, wire the stubs, append a `GAMES` row (`topic`, `axisIndex` 0–4 unique within the topic, `axisLabel`, `rankMode`). Radar topics still target **exactly five** math games. No restyle pass.
 
