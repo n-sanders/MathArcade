@@ -64,6 +64,7 @@ wwwroot/admin.html         Family admin
 wwwroot/js/common.js       Game catalog and shared client helpers
 wwwroot/games/             One HTML page per game
 wwwroot/js/                One script per game
+skunkworks/                Pattern library for inventing the next title
 ```
 
 ## Games
@@ -79,11 +80,31 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 | Prime Search | Prime recognition |
 | Calendar Scramble | Month order (1st–12th) |
 | Memory Match Math | Match expressions with answers |
+| Feed the Cats | Doubles subtraction |
 | Dino Dash | Daily bonus endless runner (no math) |
 
 **Dino Dash** unlocks after a saved session in every catalog math game today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `null`, which means all of them. Set it to a number (for example `5`) to lower the bar as the catalog grows.
 
-To add a game: append an entry to `GAMES` with a `topic` (`addition`, `subtraction`, `multiplication`, `division`, `other`, or `bonus`), then add matching HTML under `wwwroot/games/` and JS under `wwwroot/js/`. Radar topics target **exactly five games**. For a math game, set `axisIndex` (0–4, unique within that topic) and a short `axisLabel` for the spider spoke. If the game uses C→S ranks, copy the rank class names, inline and theme the CSS in that HTML, and save `stats.rank` like Calendar Scramble. Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
+To add a game, use the two-step flow in [New games](#new-games). Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
+
+## New games
+
+Shipped titles stay one HTML file + one JS file with inline CSS. New ones should be **invented from the pattern library**, not by cloning an existing page.
+
+[`skunkworks/`](skunkworks/) is that library. It is meant to be copied out as its own workspace later. A create-agent there should not read this repo or name shipped titles.
+
+| File | Who reads it |
+|------|----------------|
+| [`skunkworks/AGENTS.md`](skunkworks/AGENTS.md) | Create-agent rules |
+| [`skunkworks/PATTERNS.md`](skunkworks/PATTERNS.md) | Chrome (always) plus mechanics (pick one) |
+| [`skunkworks/CONTRACT.md`](skunkworks/CONTRACT.md) | Score vs progress, rank blobs, catalog, radar, daily bonus |
+| [`skunkworks/INTEGRATION.md`](skunkworks/INTEGRATION.md) | Cheap drop-in checklist for this repo |
+
+**Create** (expensive model, skunkworks only): paste chrome from `PATTERNS.md`, pick one mechanic, theme with CSS variables, persist through `onScore` / `onSessionSave`. Ship static HTML+JS. Do not call `MathArcade` or link `games.css`.
+
+**Integrate** (cheap model, this repo): copy files into `wwwroot/games/` and `wwwroot/js/`, add `common.js`, wire the stubs, append a `GAMES` row (`topic`, `axisIndex` 0–4 unique within the topic, `axisLabel`, `rankMode`). Radar topics still target **exactly five** math games. No restyle pass.
+
+How the library was mined (this repo only, not for create-agents): [`SKUNKWORKS_DISTILLATION.md`](SKUNKWORKS_DISTILLATION.md) and per-title notes in [`GAMES_AUDIT.md`](GAMES_AUDIT.md).
 
 ## Features
 
