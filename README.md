@@ -64,7 +64,6 @@ wwwroot/admin.html         Family admin
 wwwroot/js/common.js       Game catalog and shared client helpers
 wwwroot/games/             One HTML page per game
 wwwroot/js/                One script per game
-skunkworks/                Pattern library for inventing the next title
 ```
 
 ## Games
@@ -85,26 +84,11 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 
 **Dino Dash** unlocks after a saved session in every catalog math game today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `null`, which means all of them. Set it to a number (for example `5`) to lower the bar as the catalog grows.
 
-To add a game, use the two-step flow in [New games](#new-games). Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
+To add a game, see [New games](#new-games). Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
 
 ## New games
 
-Shipped titles stay one HTML file + one JS file with inline CSS. New ones should be **invented from the pattern library**, not by cloning an existing page.
-
-[`skunkworks/`](skunkworks/) is that library. It is meant to be copied out as its own workspace later. A create-agent there should not read this repo or name shipped titles.
-
-| File | Who reads it |
-|------|----------------|
-| [`skunkworks/AGENTS.md`](skunkworks/AGENTS.md) | Create-agent rules |
-| [`skunkworks/PATTERNS.md`](skunkworks/PATTERNS.md) | Chrome (always) plus mechanics (pick one) |
-| [`skunkworks/CONTRACT.md`](skunkworks/CONTRACT.md) | Score vs progress, rank blobs, catalog, radar, daily bonus |
-| [`skunkworks/INTEGRATION.md`](skunkworks/INTEGRATION.md) | Cheap drop-in checklist for this repo |
-
-**Create** (expensive model, skunkworks only): invent a unique complementary fantasy; derive chrome and one mechanic from `PATTERNS.md` (do not paste snippets unchanged). Theme with CSS variables, persist through `onScore` / `onSessionSave`. Ship static HTML+JS. Do not call `MathArcade` or link `games.css`.
-
-**Integrate** (cheap model, this repo): copy files into `wwwroot/games/` and `wwwroot/js/`, add `common.js`, wire the stubs, append a `GAMES` row (`topic`, `axisIndex` 0–4 unique within the topic, `axisLabel`, `rankMode`). Radar topics still target **exactly five** math games. No restyle pass.
-
-How the library was mined (this repo only, not for create-agents): [`SKUNKWORKS_DISTILLATION.md`](SKUNKWORKS_DISTILLATION.md) and per-title notes in [`GAMES_AUDIT.md`](GAMES_AUDIT.md).
+Each title is one HTML file under `wwwroot/games/` plus one script under `wwwroot/js/`, with presentation in an inline `<style>` block. Append a `GAMES` row in [`wwwroot/js/common.js`](wwwroot/js/common.js) (`topic`, `axisIndex` 0–4 unique within the topic, `axisLabel`, `rankMode`). Radar topics still target **exactly five** math games. Do not link `wwwroot/css/games.css`.
 
 ## Features
 
