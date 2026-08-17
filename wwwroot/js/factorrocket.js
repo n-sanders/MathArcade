@@ -374,8 +374,7 @@
 
     function addEdge(from, to) {
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      const midY = (from.y + to.y) / 2;
-      path.setAttribute("d", `M ${from.x} ${from.y + 16} Q ${from.x} ${midY}, ${to.x} ${to.y - 18}`);
+      path.setAttribute("d", `M ${from.x} ${from.y + 16} L ${to.x} ${to.y - 18}`);
       treeLinesEl.append(path);
     }
 
