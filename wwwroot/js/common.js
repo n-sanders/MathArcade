@@ -7,7 +7,7 @@
     { id: "addition", label: "Addition" },
     { id: "subtraction", label: "Subtraction" },
     { id: "multiplication", label: "Multiplication" },
-    { id: "division", label: "Division", comingSoon: true },
+    { id: "division", label: "Division" },
     { id: "other", label: "Other" },
     { id: "bonus", label: "Bonus", bonus: true }
   ];
@@ -55,6 +55,17 @@
       axisLabel: "Galaxy Maze",
       blurb: "Pilot a starship from Sol and follow a signal of alien life. Climb C→S navigation ranks!",
       howTo: "Each hyperspace jump needs a multiplication answer. Pick the neighboring star showing the correct product to launch, scan each system for life, and find the living world 10-15 jumps out. Completing a mission ranks you up (C→B→A→S); higher ranks use bigger factors and more decoy products.",
+      rankMode: "single"
+    },
+    {
+      id: "primerocket",
+      title: "Prime Factor Rocket",
+      path: "/games/primerocket.html",
+      topic: "division",
+      axisIndex: 0,
+      axisLabel: "Factoring",
+      blurb: "Break composite payloads into prime factors to fuel the rocket. Climb C→S ranks!",
+      howTo: "Click prime buttons to factor the payload. Ranks C/B guide you with a growing factor tree and live feedback; ranks A/S make you assemble the full factorization freely and submit it — S adds a 25-second timer per payload, and 3 failed payloads drop you back to A. Clear 3 rounds to rank up.",
       rankMode: "single"
     },
     {

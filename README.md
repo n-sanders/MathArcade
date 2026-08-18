@@ -74,6 +74,7 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 |------|------------|
 | Make 10 | Complements to 10 |
 | Galaxy Maze | Multiplication |
+| Prime Factor Rocket | Prime factorization (division) |
 | Lava Leap | Skip counting up |
 | Avalanche Run | Skip counting down |
 | Prime Search | Prime recognition |
