@@ -83,7 +83,7 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 | Feed the Cats | Doubles subtraction |
 | Dino Dash | Daily bonus endless runner (no math) |
 
-**Dino Dash** unlocks after a saved session in every catalog math game today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `null`, which means all of them. Set it to a number (for example `5`) to lower the bar as the catalog grows.
+**Dino Dash** unlocks after a saved session in 7 different catalog math games today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `7`, so students can pick which activities to play. Set it to `null` to require every catalog math game, or change the number as the catalog grows.
 
 To add a game, see [New games](#new-games). Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
 

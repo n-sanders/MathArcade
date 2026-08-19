@@ -118,7 +118,7 @@
       path: "/games/bonus.html",
       topic: "bonus",
       blurb: "Daily bonus: an endless runner — jump the cacti, duck the birds, outlast the speed-up!",
-      howTo: "Complete a saved session in each activity today to unlock this bonus, then come back tomorrow and do it again! In the run: Space/↑/tap to jump, ↓ or hold DUCK to slide under birds. The canyon keeps speeding up and your score is simply how long you survive.",
+      howTo: "Complete a saved session in 7 different activities today to unlock this bonus, then come back tomorrow and do it again! In the run: Space/↑/tap to jump, ↓ or hold DUCK to slide under birds. The canyon keeps speeding up and your score is simply how long you survive.",
       bonus: true,
       rankMode: "none"
     }
@@ -126,10 +126,10 @@
 
   /**
    * How many non-bonus catalog games must have a saved session today to unlock the bonus.
-   * Set to null to require every catalog math game (default = all of them).
-   * Set to a number (e.g. 5) to lower the bar as the catalog grows.
+   * Set to null to require every catalog math game.
+   * Set to a number (e.g. 7) so students can pick which activities to play.
    */
-  const DAILY_BONUS_REQUIRED_COUNT = null;
+  const DAILY_BONUS_REQUIRED_COUNT = 7;
 
   function getCatalogGames() {
     return GAMES.filter((g) => !g.bonus);
