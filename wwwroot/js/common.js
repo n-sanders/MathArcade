@@ -113,6 +113,17 @@
       rankMode: "single"
     },
     {
+      id: "factorrocket",
+      title: "Factor Rocket",
+      path: "/games/factorrocket.html",
+      topic: "other",
+      axisIndex: 3,
+      axisLabel: "Factors",
+      blurb: "Break composite payloads into primes and fuel a Super Heavy stack. Climb C→S launch ranks!",
+      howTo: "A composite number is unrefined payload. Factor it completely into primes to load fuel. Solve 12 numbers to finish a round and clear 3 rounds to rank up (C→B→A→S). Ranks C and B grow a factor tree with live feedback. A and S hide the tree — assemble the full prime list and press Submit. S adds a 25-second timer per number; three misses drop you back to A. The rocket launches only when the round is complete.",
+      rankMode: "single"
+    },
+    {
       id: "bonus",
       title: "Dino Dash",
       path: "/games/bonus.html",

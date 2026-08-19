@@ -81,6 +81,7 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 | Calendar Scramble | Month order (1st–12th) |
 | Memory Match Math | Match expressions with answers |
 | Feed the Cats | Doubles subtraction |
+| Factor Rocket | Prime factorization |
 | Dino Dash | Daily bonus endless runner (no math) |
 
 **Dino Dash** unlocks after a saved session in 7 different catalog math games today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `7`, so students can pick which activities to play. Set it to `null` to require every catalog math game, or change the number as the catalog grows.
