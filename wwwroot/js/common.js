@@ -121,6 +121,21 @@
       howTo: "Complete a saved session in 7 different activities today to unlock this bonus, then come back tomorrow and do it again! In the run: Space/↑/tap to jump, ↓ or hold DUCK to slide under birds. The canyon keeps speeding up and your score is simply how long you survive.",
       bonus: true,
       rankMode: "none"
+    },
+    {
+      id: "bonus2",
+      title: "Zombie Attack",
+      path: "/games/bonus-2.html",
+      topic: "bonus",
+      blurb: "Right out of Fraggle Rock - chase the alien enemy zombies throughout space hurling flaming marshmallows.",
+      howTo: "Complete a saved session in 7 different activities today to unlock this bonus, then come back tomorrow and do it again! In the skies: ← → to move, Space to fire, Enter to start, M to mute. Clear each wave of diving zombie ships; lords take two hits. Score is points from toasted enemies.",
+      bonus: true,
+      rankMode: "none",
+      easterEggScores: [
+        { playerName: "Doc", score: 4300 },
+        { playerName: "Sprocket", score: 700400 },
+        { playerName: "Shimmelfinney", score: 1600000 }
+      ]
     }
   ];
 
@@ -186,6 +201,10 @@
     return localDateKey(when) === localDateKey(new Date());
   }
 
+  function isDailyBonusTestSkip() {
+    return new URLSearchParams(location.search).has("test");
+  }
+
   function getDailyBonusUnlockStatus(progressByGameId = {}) {
     const catalog = getCatalogGames();
     const required = getDailyBonusRequiredCount();
@@ -200,8 +219,10 @@
     const completed = completedIds.length;
     const remainingGames = catalog.filter((game) => !completedIds.includes(game.id));
     const remaining = Math.max(0, required - completed);
+    const testSkip = isDailyBonusTestSkip();
     return {
-      unlocked: completed >= required,
+      unlocked: testSkip || completed >= required,
+      testSkip,
       completedIds,
       completed,
       remainingIds: remainingGames.map((g) => g.id),
@@ -607,8 +628,21 @@
     });
   }
 
+  function mergeEasterEggScores(gameId, scores, limit) {
+    const game = GAMES.find((g) => g.id === gameId);
+    const eggs = (game && game.easterEggScores) || [];
+    if (!eggs.length) return scores;
+    const merged = scores.concat(eggs.map((egg) => ({
+      playerName: egg.playerName,
+      score: egg.score
+    })));
+    merged.sort((a, b) => (b.score - a.score) || String(a.playerName).localeCompare(String(b.playerName)));
+    return merged.slice(0, limit);
+  }
+
   async function loadTopScores(gameId, limit = 5) {
-    return api(`/api/scores/${encodeURIComponent(gameId)}?limit=${limit}`);
+    const scores = await api(`/api/scores/${encodeURIComponent(gameId)}?limit=${limit}`);
+    return mergeEasterEggScores(gameId, Array.isArray(scores) ? scores : [], limit);
   }
 
   function formatActivityList(titles) {
@@ -632,6 +666,7 @@
     getGamesForTopic,
     getDailyBonusRequiredCount,
     isProgressFromLocalToday,
+    isDailyBonusTestSkip,
     getDailyBonusUnlockStatus,
     formatActivityList,
     getOrCreateDeviceToken,

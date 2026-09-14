@@ -205,6 +205,9 @@
       }
 
       function bonusProgressHint(status) {
+        if (status.testSkip) {
+          return "Test skip — bonus unlocked for this visit.";
+        }
         if (status.unlocked) {
           return `Unlocked for today — ${status.completed} of ${status.required} activities done.`;
         }
@@ -381,7 +384,9 @@
           launchEl.textContent = "Locked";
           launchEl.onclick = (e) => e.preventDefault();
         } else {
-          launchEl.href = game.path;
+          launchEl.href = game.bonus && unlockStatus.testSkip
+            ? `${game.path}?test`
+            : game.path;
           launchEl.classList.remove("disabled");
           launchEl.removeAttribute("aria-disabled");
           launchEl.textContent = "Launch";

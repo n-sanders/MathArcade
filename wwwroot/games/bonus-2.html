@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zombie Attack · MathArcade Daily Bonus</title>
+  <link rel="icon" href="data:,">
+  <style>
+    html, body { margin: 0; padding: 0; background: #020208; height: 100%; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; }
+    canvas { display: block; image-rendering: auto; cursor: crosshair; }
+
+    .back-link {
+      position: fixed;
+      top: 0.7rem;
+      left: 0.85rem;
+      z-index: 20;
+      color: rgba(180, 220, 255, 0.7);
+      font: 700 0.95rem "Courier New", monospace;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+    }
+    .back-link:hover { color: #7ce8ff; }
+
+    .lock-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 2, 10, 0.72);
+      padding: 1.5rem;
+    }
+    .lock-overlay[hidden] { display: none; }
+
+    .lock-card {
+      max-width: 28rem;
+      color: #e8f6ff;
+      font-family: "Courier New", monospace;
+      text-align: center;
+      border: 1px solid rgba(124, 232, 255, 0.35);
+      background: rgba(8, 8, 24, 0.92);
+      padding: 1.5rem 1.35rem;
+    }
+    .lock-card h2 {
+      margin: 0 0 0.7rem;
+      color: #6aff4f;
+      letter-spacing: 0.06em;
+    }
+    .lock-card p {
+      margin: 0 0 1.1rem;
+      line-height: 1.45;
+      color: rgba(200, 230, 255, 0.85);
+    }
+    .lock-card a {
+      display: inline-block;
+      color: #020208;
+      background: #7ce8ff;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 0.45rem 0.9rem;
+    }
+    .lock-card a:hover { background: #bff4ff; }
+  </style>
+</head>
+<body>
+  <a class="back-link" href="/">← Arcade</a>
+  <div class="lock-overlay" id="lock-overlay" hidden>
+    <div class="lock-card" id="lock-card"></div>
+  </div>
+  <canvas id="game"></canvas>
+  <script src="/js/common.js"></script>
+  <script src="/js/bonus-2.js"></script>
+</body>
+</html>

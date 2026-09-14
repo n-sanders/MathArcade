@@ -82,8 +82,9 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 | Memory Match Math | Match expressions with answers |
 | Feed the Cats | Doubles subtraction |
 | Dino Dash | Daily bonus endless runner (no math) |
+| Zombie Attack | Daily bonus Galaxian shooter (no math) |
 
-**Dino Dash** unlocks after a saved session in 7 different catalog math games today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `7`, so students can pick which activities to play. Set it to `null` to require every catalog math game, or change the number as the catalog grows.
+**Dino Dash** and **Zombie Attack** unlock after a saved session in 7 different catalog math games today. `DAILY_BONUS_REQUIRED_COUNT` in `common.js` is `7`, so students can pick which activities to play. Set it to `null` to require every catalog math game, or change the number as the catalog grows. Append `?test` to the lobby or a bonus URL (for example `/?test` or `/games/bonus-2.html?test`) to skip the gate while testing.
 
 To add a game, see [New games](#new-games). Brainstorms that are not ready to ship live in [`GAME_IDEAS.md`](GAME_IDEAS.md).
 
