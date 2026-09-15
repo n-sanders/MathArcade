@@ -68,6 +68,7 @@
         setPlayerName,
         ensurePlayer,
         loadTopScores,
+        TOP_SCORES_LIMIT,
         loadAllProgress,
         getDailyBonusUnlockStatus,
         getGameRankSummary,
@@ -420,7 +421,7 @@
 
         scoresEl.innerHTML = `<li class="empty">Loading…</li>`;
         try {
-          const scores = await loadTopScores(game.id, 5);
+          const scores = await loadTopScores(game.id, TOP_SCORES_LIMIT);
           if (selectedId !== id) return;
           if (!scores.length) {
             scoresEl.innerHTML = `<li class="empty">No scores yet — be the first!</li>`;

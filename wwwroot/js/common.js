@@ -145,6 +145,7 @@
    * Set to a number (e.g. 7) so students can pick which activities to play.
    */
   const DAILY_BONUS_REQUIRED_COUNT = 7;
+  const TOP_SCORES_LIMIT = 10;
 
   function getCatalogGames() {
     return GAMES.filter((g) => !g.bonus);
@@ -640,7 +641,7 @@
     return merged.slice(0, limit);
   }
 
-  async function loadTopScores(gameId, limit = 5) {
+  async function loadTopScores(gameId, limit = TOP_SCORES_LIMIT) {
     const scores = await api(`/api/scores/${encodeURIComponent(gameId)}?limit=${limit}`);
     return mergeEasterEggScores(gameId, Array.isArray(scores) ? scores : [], limit);
   }
@@ -660,6 +661,7 @@
     GAMES,
     TOPICS,
     DAILY_BONUS_REQUIRED_COUNT,
+    TOP_SCORES_LIMIT,
     getCatalogGames,
     getTopic,
     getRadarTopics,
