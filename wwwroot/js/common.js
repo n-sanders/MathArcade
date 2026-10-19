@@ -32,7 +32,7 @@
       axisIndex: 1,
       axisLabel: "Lava Leap",
       blurb: "Skip-count platform to platform and outrun the rising lava!",
-      howTo: "Pick a number 2–10, then tap the platform showing the next skip-count number to leap there. Each number has its own rank (C→S) that speeds up the lava. Reach ×12 to escape!",
+      howTo: "Pick a number 2–10, then tap the platform showing the next skip-count number to leap there. Each number has its own rank (C→S). Rank C is untimed — the lava stays put. Higher ranks speed up the lava. Reach ×12 to escape!",
       rankMode: "perNumber"
     },
     {
@@ -43,7 +43,7 @@
       axisIndex: 0,
       axisLabel: "Avalanche",
       blurb: "Skip-count down the mountain and outrun the avalanche!",
-      howTo: "Pick a number 2–10, then tap the platform showing the next countdown number to hop down from ×12 all the way to 0. Each number has its own rank (C→S) that speeds up the avalanche. Reach 0 to escape!",
+      howTo: "Pick a number 2–10, then tap the platform showing the next countdown number to hop down from ×12 all the way to 0. Each number has its own rank (C→S). Rank C is untimed — the avalanche stays put. Higher ranks speed up the avalanche. Reach 0 to escape!",
       rankMode: "perNumber"
     },
     {

@@ -420,6 +420,8 @@
   }
 
   function avalancheSpeedPx() {
+    // Rank C is untimed: the avalanche never descends on its own.
+    if (rank === "C") return 0;
     // pixels/second the avalanche front descends, scaled by this number's rank
     return (30 + step * 2.5) * (RANK_SPEED[rank] || 1) * (stageH / 700);
   }
@@ -638,13 +640,14 @@
       setTimeout(() => plat.el.remove(), 950);
       combo = 0;
       score = Math.max(0, score - 5);
-      avalancheY += 70; // the avalanche surges down!
+      // Rank C stays untimed: a miss shatters the slab, but the avalanche does not close in.
+      if (rank !== "C") avalancheY += 70;
       shake(false);
       flash("bad");
       playWrong();
       const px = plat.x + plat.w / 2;
       const py = rows[rowIdx].y - cameraY;
-      floatText(px, py, "✗ Snow surge!", "bad");
+      floatText(px, py, rank === "C" ? "✗ Not quite!" : "✗ Snow surge!", "bad");
       updateHud();
     }
   }
@@ -946,10 +949,10 @@
 
     overlayCard.innerHTML = `
       <h2>Pick a countdown</h2>
-      <p>Each number has its own rank. Higher rank = a faster, angrier avalanche.</p>
+      <p>Each number has its own rank. Rank C is untimed — the avalanche stays put. Higher ranks bring a faster, angrier avalanche.</p>
       <div class="pick-grid">${buttons.join("")}</div>
       <div class="rank-legend">
-        <span><span class="rank-badge rank-C">C</span> flurry</span>
+        <span><span class="rank-badge rank-C">C</span> untimed</span>
         <span><span class="rank-badge rank-B">B</span> brisk</span>
         <span><span class="rank-badge rank-A">A</span> blizzard</span>
         <span><span class="rank-badge rank-S">S</span> whiteout</span>

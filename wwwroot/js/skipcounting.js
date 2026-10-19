@@ -373,6 +373,8 @@
   }
 
   function lavaSpeedPx() {
+    // Rank C is untimed: the lava never rises on its own.
+    if (rank === "C") return 0;
     // pixels/second the lava surface rises, scaled by this number's rank
     return (30 + step * 2.5) * (RANK_SPEED[rank] || 1) * (stageH / 700);
   }
@@ -589,13 +591,14 @@
       setTimeout(() => plat.el.remove(), 950);
       combo = 0;
       score = Math.max(0, score - 5);
-      lavaY -= 70; // lava surges up!
+      // Rank C stays untimed: a miss crumbles the slab, but the lava does not close in.
+      if (rank !== "C") lavaY -= 70;
       shake(false);
       flash("bad");
       playWrong();
       const px = plat.x + plat.w / 2;
       const py = rows[rowIdx].y - cameraY;
-      floatText(px, py, "✗ Lava surge!", "bad");
+      floatText(px, py, rank === "C" ? "✗ Not quite!" : "✗ Lava surge!", "bad");
       updateHud();
     }
   }
@@ -897,10 +900,10 @@
 
     overlayCard.innerHTML = `
       <h2>Pick a skip</h2>
-      <p>Each number has its own rank. Higher rank = hotter, faster lava.</p>
+      <p>Each number has its own rank. Rank C is untimed — the lava stays put. Higher ranks bring hotter, faster lava.</p>
       <div class="pick-grid">${buttons.join("")}</div>
       <div class="rank-legend">
-        <span><span class="rank-badge rank-C">C</span> chill</span>
+        <span><span class="rank-badge rank-C">C</span> untimed</span>
         <span><span class="rank-badge rank-B">B</span> brisk</span>
         <span><span class="rank-badge rank-A">A</span> blazing</span>
         <span><span class="rank-badge rank-S">S</span> inferno</span>
