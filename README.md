@@ -34,7 +34,9 @@ Lobby uses [`wwwroot/css/site.css`](wwwroot/css/site.css). Admin uses [`wwwroot/
 
 Math games use C→S ranks. Persist `stats.rank` (`"C"|"B"|"A"|"S"`) in `StatsJson` and `DifficultyLevel` 1–4 (`RANKS.indexOf(rank) + 1`). Rank-up knobs (timers, grid size, factors) stay in that game's JS. If `stats.rank` is missing, start at C — do not map leftover numeric `difficultyLevel` values into B/A/S. A saved session (any `saveProgress` that updates `updatedAt`) is what counts for the daily bonus, not a rank-up.
 
-**Skill radar.** Each non-bonus topic is a pentagon with five axes. Each axis is one catalog game (`axisIndex` 0–4, unique within the topic). Unused spokes stay **Coming soon** at score 0. Axis fill is derived from saved ranks (unplayed = 0, C = 0.25, B = 0.5, A = 0.75, S = 1). Per-number games (Lava Leap, Avalanche Run) average the nine ×2–×10 ranks, so each letter bump is 1/9 of that axis. A full pentagon means S-rank on every game in that topic.
+**Skill radar.** Each non-bonus topic is a pentagon with five axes. Each axis is one catalog game (`axisIndex` 0–4, unique within the topic). Unused spokes stay **Coming soon** at score 0. Axis fill is derived from saved ranks (unplayed = 0, C = 0.25, B = 0.5, A = 0.75, S = 1). Per-number games average their per-number ranks: Lava Leap and Avalanche Run use the default ×2–×10 (each letter bump is 1/9 of the axis), and a game can set `perNumberRange` in its `GAMES` row to change that (Pod Racer uses ×2–×12). A full pentagon means S-rank on every game in that topic.
+
+**Pod Racer (React exception).** Multiplication Pod Racer is a React/Vite app whose source lives in [`podracer/`](podracer/). Its build output is copied into `wwwroot/games/podracer/` (git-ignored) and launched from `/games/podracer/index.html` — link the file, not the folder, because the lobby fallback route would otherwise catch the folder URL. Because it is same-origin, it reads `matharcade_device_token` / `matharcade_player_name` from `localStorage` and saves to `/api/progress/podracer` with `stats.ranks` keyed `"2"`–`"12"` plus its full save under `stats.save`. Grand Prix results go to `/api/scores`. Opened outside MathArcade (for example `npm run dev` in `podracer/`), it stays local-only. To change Pod Racer, edit it in `podracer/` and rebuild; `npm test` there runs its Vitest suite.
 
 ### API
 
@@ -64,6 +66,8 @@ wwwroot/admin.html         Family admin
 wwwroot/js/common.js       Game catalog and shared client helpers
 wwwroot/games/             One HTML page per game
 wwwroot/js/                One script per game
+podracer/                  Pod Racer source (React/Vite)
+scripts/build-podracer.ps1 Builds Pod Racer into wwwroot/games/podracer for dotnet run
 ```
 
 ## Games
@@ -74,6 +78,7 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 |------|------------|
 | Make 10 | Complements to 10 |
 | Galaxy Maze | Multiplication |
+| Pod Racer | Times tables ×2–×12 (React/Vite) |
 | Prime Factor Rocket | Prime factorization (division) |
 | Lava Leap | Skip counting up |
 | Avalanche Run | Skip counting down |
@@ -90,7 +95,7 @@ To add a game, see [New games](#new-games). Brainstorms that are not ready to sh
 
 ## New games
 
-Each title is one HTML file under `wwwroot/games/` plus one script under `wwwroot/js/`, with presentation in an inline `<style>` block. Append a `GAMES` row in [`wwwroot/js/common.js`](wwwroot/js/common.js) (`topic`, `axisIndex` 0–4 unique within the topic, `axisLabel`, `rankMode`). Radar topics still target **exactly five** math games. Do not link `wwwroot/css/games.css`.
+Each title is one HTML file under `wwwroot/games/` plus one script under `wwwroot/js/`, with presentation in an inline `<style>` block (Pod Racer is the one exception; see [Architecture](#architecture)). Append a `GAMES` row in [`wwwroot/js/common.js`](wwwroot/js/common.js) (`topic`, `axisIndex` 0–4 unique within the topic, `axisLabel`, `rankMode`). Radar topics still target **exactly five** math games. Do not link `wwwroot/css/games.css`.
 
 ## Features
 
@@ -101,11 +106,14 @@ Each title is one HTML file under `wwwroot/games/` plus one script under `wwwroo
 
 ## Run locally
 
-Needs the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0).
+Needs the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0), plus Node.js 22+ to build Pod Racer.
 
 ```bash
+./scripts/build-podracer.ps1   # rerun after changing podracer/
 dotnet run
 ```
+
+Skip the build script if you don't need Pod Racer locally; everything else runs without it.
 
 Open http://localhost:5080. Uses `./data/matharcade.db` by default.
 
@@ -115,7 +123,7 @@ Open http://localhost:5080. Uses `./data/matharcade.db` by default.
 docker compose up --build
 ```
 
-Open http://localhost:5087.
+Open http://localhost:5087. The Dockerfile builds Pod Racer in a Node stage from `podracer/` (running its tests first).
 
 Player data lives in the `matharcade-data` Docker volume (`/data/matharcade.db` inside the container). Host port **5087** maps to container port **8080**.
 

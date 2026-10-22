@@ -27,6 +27,9 @@ publish/
 *.cache
 !wwwroot/**/*.dll
 
+## Pod Racer build output (built from podracer/)
+wwwroot/games/podracer/
+
 ## NuGet
 *.nupkg
 *.snupkg

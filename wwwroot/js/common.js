@@ -58,6 +58,18 @@
       rankMode: "single"
     },
     {
+      id: "podracer",
+      title: "Pod Racer",
+      path: "/games/podracer/index.html",
+      topic: "multiplication",
+      axisIndex: 1,
+      axisLabel: "Pod Racer",
+      blurb: "Race your pod across the desert by answering times-table facts. Climb C→S ranks for every table from ×2 to ×12!",
+      howTo: "Pick a times table in the hangar. Each answer boosts your pod; wrong answers dent the hull, and three close together wreck it. Rank C practices with a skip-count chart, then a perfect timed check promotes you to B. At B, A, and S you race a rival — win 3 races to rank up, with fewer hints and a faster rival each rank. Reach Rank A on 4 tables to unlock the Grand Prix, whose best score goes on the leaderboard.",
+      rankMode: "perNumber",
+      perNumberRange: { min: 2, max: 12 }
+    },
+    {
       id: "primerocket",
       title: "Prime Factor Rocket",
       path: "/games/primerocket.html",
@@ -252,19 +264,27 @@
     }
   }
 
-  function defaultPerNumberRanks() {
+  function getPerNumberRange(game) {
+    const range = game && game.perNumberRange;
+    if (range && Number.isInteger(range.min) && Number.isInteger(range.max) && range.min <= range.max) {
+      return range;
+    }
+    return { min: PER_NUMBER_MIN, max: PER_NUMBER_MAX };
+  }
+
+  function defaultPerNumberRanks(range) {
     const ranks = {};
-    for (let n = PER_NUMBER_MIN; n <= PER_NUMBER_MAX; n++) ranks[String(n)] = "C";
+    for (let n = range.min; n <= range.max; n++) ranks[String(n)] = "C";
     return ranks;
   }
 
-  function parsePerNumberRanks(stats) {
-    const base = defaultPerNumberRanks();
+  function parsePerNumberRanks(stats, range) {
+    const base = defaultPerNumberRanks(range);
     if (!stats || typeof stats !== "object") return base;
     const src = stats.ranks && typeof stats.ranks === "object" && !Array.isArray(stats.ranks)
       ? stats.ranks
       : stats;
-    for (let n = PER_NUMBER_MIN; n <= PER_NUMBER_MAX; n++) {
+    for (let n = range.min; n <= range.max; n++) {
       const key = String(n);
       const r = src[key];
       if (RANKS.includes(r)) base[key] = r;
@@ -287,7 +307,7 @@
       return {
         played: true,
         rankMode,
-        ranks: parsePerNumberRanks(stats)
+        ranks: parsePerNumberRanks(stats, getPerNumberRange(game))
       };
     }
     if (rankMode === "single") {
@@ -346,9 +366,10 @@
     if (summary.rankMode === "single") return rankLetterScore(summary.rank);
     if (summary.rankMode === "perNumber") {
       const ranks = summary.ranks || {};
+      const range = getPerNumberRange(game);
       let sum = 0;
       let count = 0;
-      for (let n = PER_NUMBER_MIN; n <= PER_NUMBER_MAX; n++) {
+      for (let n = range.min; n <= range.max; n++) {
         sum += rankLetterScore(ranks[String(n)]);
         count += 1;
       }

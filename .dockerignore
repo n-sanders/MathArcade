@@ -8,3 +8,6 @@ data
 *.db-*
 README.md
 **/*.md
+**/node_modules
+podracer/dist
+wwwroot/games/podracer
