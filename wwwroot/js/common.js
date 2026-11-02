@@ -36,6 +36,17 @@
       rankMode: "perNumber"
     },
     {
+      id: "doublescoop",
+      title: "Double Scoop",
+      path: "/games/doublescoop/index.html",
+      topic: "addition",
+      axisIndex: 2,
+      axisLabel: "Doubles",
+      blurb: "Solve doubles to stack ice cream scoops on your cone. Five in a row finishes a cone; one slip and it topples! Climb C→S ranks.",
+      howTo: "Type each answer on the number pad. Every correct answer drops a scoop on your cone, and five in a row finishes it for a bonus. A wrong answer knocks the cone over and resets your streak, and longer streaks score more points. Rank C is pure doubles (20 questions); B adds near doubles one apart like 6 + 7 (25); A adds near doubles two apart like 6 + 8 (30); S adds a 6-second timer per question (35). Finish 2 rounds at a rank to unlock its rank-up test, which needs 100% to move up. Missing a test never drops your rank.",
+      rankMode: "single"
+    },
+    {
       id: "avalanche",
       title: "Avalanche Run",
       path: "/games/avalanche.html",

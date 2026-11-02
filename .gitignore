@@ -27,8 +27,9 @@ publish/
 *.cache
 !wwwroot/**/*.dll
 
-## Pod Racer build output (built from podracer/)
+## Pod Racer / Double Scoop build output (built from podracer/ and doublescoop/)
 wwwroot/games/podracer/
+wwwroot/games/doublescoop/
 
 ## NuGet
 *.nupkg

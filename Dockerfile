@@ -7,6 +7,15 @@ COPY podracer/ .
 RUN npm test
 RUN npm run build
 
+# Double Scoop (React/Vite app in doublescoop/)
+FROM node:22-alpine AS doublescoop
+WORKDIR /doublescoop
+COPY doublescoop/package.json doublescoop/package-lock.json ./
+RUN npm ci
+COPY doublescoop/ .
+RUN npm test
+RUN npm run build
+
 # Build
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
@@ -20,6 +29,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 COPY --from=podracer /podracer/dist ./wwwroot/games/podracer
+COPY --from=doublescoop /doublescoop/dist ./wwwroot/games/doublescoop
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ConnectionStrings__Default="Data Source=/data/matharcade.db"
 EXPOSE 8080

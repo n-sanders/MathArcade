@@ -11,3 +11,5 @@ README.md
 **/node_modules
 podracer/dist
 wwwroot/games/podracer
+doublescoop/dist
+wwwroot/games/doublescoop
