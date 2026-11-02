@@ -139,6 +139,16 @@ input {
   transform: translateY(-1px);
 }
 
+.player-box button.switch {
+  background: transparent;
+  color: var(--bg-mid);
+  box-shadow: inset 0 0 0 2px rgba(18, 102, 120, 0.28);
+}
+
+.player-box button.switch:hover {
+  background: rgba(18, 102, 120, 0.08);
+}
+
 .topic-board {
   background: var(--panel);
   border-radius: var(--radius);

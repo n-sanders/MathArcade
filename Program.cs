@@ -72,6 +72,85 @@ app.MapGet("/api/players/by-token/{deviceToken}", async (string deviceToken, App
     return player is null ? Results.NotFound() : Results.Ok(ToPlayerDto(player));
 });
 
+app.MapGet("/api/players", async (AppDbContext db) =>
+{
+    var players = await db.Players.AsNoTracking().ToListAsync();
+    var progressTimes = await db.GameProgress.AsNoTracking()
+        .Select(g => new { g.PlayerId, g.UpdatedAt })
+        .ToListAsync();
+    var scoreTimes = await db.HighScores.AsNoTracking()
+        .Select(h => new { h.PlayerId, h.AchievedAt })
+        .ToListAsync();
+
+    var lastByPlayer = new Dictionary<int, DateTime>();
+    var withProgress = new HashSet<int>();
+    foreach (var row in progressTimes)
+    {
+        withProgress.Add(row.PlayerId);
+        if (!lastByPlayer.TryGetValue(row.PlayerId, out var current) || row.UpdatedAt > current)
+        {
+            lastByPlayer[row.PlayerId] = row.UpdatedAt;
+        }
+    }
+
+    var withScores = new HashSet<int>();
+    foreach (var row in scoreTimes)
+    {
+        withScores.Add(row.PlayerId);
+        if (!lastByPlayer.TryGetValue(row.PlayerId, out var current) || row.AchievedAt > current)
+        {
+            lastByPlayer[row.PlayerId] = row.AchievedAt;
+        }
+    }
+
+    var result = players
+        .Select(p =>
+        {
+            DateTime? lastActiveAt = lastByPlayer.TryGetValue(p.Id, out var at)
+                ? DateTime.SpecifyKind(at, DateTimeKind.Utc)
+                : null;
+            return new
+            {
+                p.Id,
+                p.Name,
+                p.DeviceToken,
+                CreatedAt = DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc),
+                LastActiveAt = lastActiveAt,
+                HasProgress = withProgress.Contains(p.Id) || withScores.Contains(p.Id)
+            };
+        })
+        .OrderByDescending(p => p.LastActiveAt ?? DateTime.MinValue)
+        .ThenBy(p => p.Name)
+        .ToList();
+
+    return Results.Ok(result);
+});
+
+app.MapDelete("/api/players/by-token/{deviceToken}", async (string deviceToken, AppDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(deviceToken))
+    {
+        return Results.BadRequest(new { error = "deviceToken is required." });
+    }
+
+    var player = await db.Players.FirstOrDefaultAsync(p => p.DeviceToken == deviceToken);
+    if (player is null)
+    {
+        return Results.NotFound();
+    }
+
+    var hasProgress = await db.GameProgress.AnyAsync(g => g.PlayerId == player.Id)
+        || await db.HighScores.AnyAsync(h => h.PlayerId == player.Id);
+    if (hasProgress)
+    {
+        return Results.Json(new { error = "Player has saved progress." }, statusCode: 409);
+    }
+
+    db.Players.Remove(player);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
 app.MapGet("/api/scores/{gameId}", async (string gameId, AppDbContext db, int limit = 10) =>
 {
     limit = Math.Clamp(limit, 1, 50);

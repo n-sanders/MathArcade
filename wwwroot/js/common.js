@@ -402,11 +402,23 @@
     });
   }
 
+  function getDeviceToken() {
+    try {
+      return localStorage.getItem(TOKEN_KEY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function setDeviceToken(token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+
   function getOrCreateDeviceToken() {
-    let token = localStorage.getItem(TOKEN_KEY);
+    let token = getDeviceToken();
     if (!token) {
       token = uuid();
-      localStorage.setItem(TOKEN_KEY, token);
+      setDeviceToken(token);
     }
     return token;
   }
@@ -439,9 +451,30 @@
   }
 
   const PLAYER_MODAL_ID = "matharcade-player-modal";
-  let playerNamePromptPromise = null;
+  let playerChoicePromise = null;
 
-  function injectPlayerNameModal() {
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function formatLastPlayed(value) {
+    if (!value) return "No games yet";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "No games yet";
+    const sameYear = date.getFullYear() === new Date().getFullYear();
+    const when = date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: sameYear ? undefined : "numeric"
+    });
+    return `Last played ${when}`;
+  }
+
+  function injectPlayerChooser() {
     if (document.getElementById(PLAYER_MODAL_ID)) return;
 
     const style = document.createElement("style");
@@ -460,7 +493,9 @@
       }
       .ma-player-modal.hidden { display: none; }
       .ma-player-modal__card {
-        width: min(22rem, 100%);
+        width: min(24rem, 100%);
+        max-height: min(36rem, calc(100vh - 2.5rem));
+        overflow: auto;
         padding: 1.5rem 1.35rem 1.35rem;
         border-radius: 18px;
         background: rgba(232, 247, 244, 0.96);
@@ -481,12 +516,62 @@
         line-height: 1.45;
         color: #4a6b74;
       }
+      .ma-player-modal__list {
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .ma-player-modal__player {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.1rem;
+        width: 100%;
+        border: 2px solid rgba(18, 102, 120, 0.16);
+        border-radius: 14px;
+        background: #fff;
+        color: #102a32;
+        padding: 0.7rem 0.9rem;
+        font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+        font-size: 1.15rem;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+      }
+      .ma-player-modal__player:hover,
+      .ma-player-modal__player:focus-visible {
+        border-color: #ff6b4a;
+        outline: none;
+      }
+      .ma-player-modal__player small {
+        font-family: "Nunito", system-ui, sans-serif;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #4a6b74;
+      }
+      .ma-player-modal__new,
+      .ma-player-modal__back {
+        margin-top: 0.75rem;
+        border: none;
+        background: transparent;
+        color: #126678;
+        font-family: "Nunito", system-ui, sans-serif;
+        font-size: 0.95rem;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: underline;
+      }
       .ma-player-modal__form {
         margin-top: 1.15rem;
         display: flex;
         flex-direction: column;
         gap: 0.65rem;
       }
+      .ma-player-modal__form.hidden,
+      .ma-player-modal__list.hidden,
+      .ma-player-modal__new.hidden,
+      .ma-player-modal__back.hidden { display: none; }
       .ma-player-modal__form input {
         width: 100%;
         border: 2px solid rgba(18, 102, 120, 0.2);
@@ -500,6 +585,12 @@
       }
       .ma-player-modal__form input:focus {
         border-color: #ff6b4a;
+      }
+      .ma-player-modal__error {
+        margin: 0;
+        color: #c2410c;
+        font-size: 0.88rem;
+        font-weight: 800;
       }
       .ma-player-modal__form button {
         border: none;
@@ -533,63 +624,200 @@
     modal.setAttribute("aria-labelledby", "ma-player-modal-title");
     modal.innerHTML = `
       <div class="ma-player-modal__card">
-        <h2 id="ma-player-modal-title">Welcome, explorer!</h2>
-        <p>What should we call you? Your name appears on leaderboards.</p>
-        <form class="ma-player-modal__form" id="ma-player-modal-form">
+        <h2 id="ma-player-modal-title">Who is playing?</h2>
+        <p id="ma-player-modal-lead">Pick your name to get your games back.</p>
+        <div id="ma-player-modal-list" class="ma-player-modal__list"></div>
+        <button type="button" id="ma-player-modal-new" class="ma-player-modal__new">I'm new</button>
+        <form class="ma-player-modal__form hidden" id="ma-player-modal-form">
           <input id="ma-player-modal-input" name="name" maxlength="64" autocomplete="nickname" placeholder="Your name" />
+          <p id="ma-player-modal-error" class="ma-player-modal__error" hidden></p>
           <button type="submit">Let's play</button>
         </form>
+        <button type="button" id="ma-player-modal-back" class="ma-player-modal__back hidden">Back to names</button>
       </div>
     `;
     document.body.appendChild(modal);
   }
 
-  function askPlayerName() {
-    if (playerNamePromptPromise) return playerNamePromptPromise;
+  function showNameForm(showBack) {
+    const form = document.getElementById("ma-player-modal-form");
+    const list = document.getElementById("ma-player-modal-list");
+    const newer = document.getElementById("ma-player-modal-new");
+    const back = document.getElementById("ma-player-modal-back");
+    const lead = document.getElementById("ma-player-modal-lead");
+    const input = document.getElementById("ma-player-modal-input");
+    form.classList.remove("hidden");
+    list.classList.add("hidden");
+    newer.classList.add("hidden");
+    back.classList.toggle("hidden", !showBack);
+    lead.textContent = "Type your name. It shows up on the leaderboards.";
+    document.getElementById("ma-player-modal-error").hidden = true;
+    queueMicrotask(() => input.focus({ preventScroll: true }));
+  }
 
-    playerNamePromptPromise = new Promise((resolve) => {
-      injectPlayerNameModal();
+  function showPlayerList() {
+    const form = document.getElementById("ma-player-modal-form");
+    const list = document.getElementById("ma-player-modal-list");
+    const newer = document.getElementById("ma-player-modal-new");
+    const back = document.getElementById("ma-player-modal-back");
+    const lead = document.getElementById("ma-player-modal-lead");
+    const error = document.getElementById("ma-player-modal-error");
+    form.classList.add("hidden");
+    list.classList.remove("hidden");
+    newer.classList.remove("hidden");
+    back.classList.add("hidden");
+    error.hidden = true;
+    lead.textContent = "Pick your name to get your games back.";
+  }
+
+  /**
+   * @param {{ namesOnly?: boolean }} [options]
+   * @returns {Promise<{ name: string, deviceToken?: string }>}
+   */
+  function askWhoIsPlaying(options = {}) {
+    if (playerChoicePromise) return playerChoicePromise;
+
+    playerChoicePromise = new Promise((resolve) => {
+      injectPlayerChooser();
       const modal = document.getElementById(PLAYER_MODAL_ID);
       const form = document.getElementById("ma-player-modal-form");
+      const list = document.getElementById("ma-player-modal-list");
+      const newer = document.getElementById("ma-player-modal-new");
+      const back = document.getElementById("ma-player-modal-back");
       const input = document.getElementById("ma-player-modal-input");
+      const error = document.getElementById("ma-player-modal-error");
+      const title = document.getElementById("ma-player-modal-title");
 
       input.value = "";
+      error.hidden = true;
+      title.textContent = options.namesOnly ? "What should we call you?" : "Who is playing?";
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
 
-      const finish = (name) => {
+      const finish = (choice) => {
         form.removeEventListener("submit", onSubmit);
+        list.removeEventListener("click", onListClick);
+        newer.removeEventListener("click", onNew);
+        back.removeEventListener("click", onBack);
         modal.classList.add("hidden");
         modal.setAttribute("aria-hidden", "true");
-        playerNamePromptPromise = null;
-        resolve(name);
+        playerChoicePromise = null;
+        resolve(choice);
       };
 
       const onSubmit = (e) => {
         e.preventDefault();
-        const name = (input.value.trim() || "Player").slice(0, 64);
-        finish(name);
+        const name = input.value.trim().slice(0, 64);
+        if (!name) {
+          error.hidden = false;
+          error.textContent = "Type a name to play.";
+          input.focus({ preventScroll: true });
+          return;
+        }
+        finish({ name });
       };
 
+      const onListClick = (e) => {
+        const button = e.target.closest("[data-token]");
+        if (!button) return;
+        finish({
+          name: button.getAttribute("data-name") || "",
+          deviceToken: button.getAttribute("data-token") || ""
+        });
+      };
+
+      const onNew = () => showNameForm(true);
+      const onBack = () => showPlayerList();
+
       form.addEventListener("submit", onSubmit);
-      queueMicrotask(() => input.focus({ preventScroll: true }));
+      list.addEventListener("click", onListClick);
+      newer.addEventListener("click", onNew);
+      back.addEventListener("click", onBack);
+
+      if (options.namesOnly) {
+        showNameForm(false);
+        return;
+      }
+
+      list.innerHTML = `<p>Looking up players…</p>`;
+      showPlayerList();
+      api("/api/players")
+        .then((players) => {
+          if (playerChoicePromise === null) return;
+          const rows = Array.isArray(players) ? players : [];
+          if (!rows.length) {
+            showNameForm(false);
+            return;
+          }
+          list.innerHTML = rows.map((player) => `
+            <button type="button" class="ma-player-modal__player"
+              data-token="${escapeHtml(player.deviceToken)}"
+              data-name="${escapeHtml(player.name)}">
+              ${escapeHtml(player.name)}
+              <small>${escapeHtml(formatLastPlayed(player.lastActiveAt))}</small>
+            </button>
+          `).join("");
+        })
+        .catch(() => {
+          if (playerChoicePromise === null) return;
+          list.innerHTML = "";
+          showNameForm(false);
+          error.hidden = false;
+          error.textContent = "Couldn't load saved players. You can still start with a new name.";
+        });
     });
 
-    return playerNamePromptPromise;
+    return playerChoicePromise;
+  }
+
+  async function registerPlayer(name, deviceToken) {
+    const trimmed = name.trim().slice(0, 64);
+    if (!trimmed) throw new Error("Name is required.");
+    setDeviceToken(deviceToken);
+    setPlayerName(trimmed);
+    return api("/api/players", {
+      method: "POST",
+      body: JSON.stringify({ name: trimmed, deviceToken })
+    });
+  }
+
+  async function retireEmptyPlayer(deviceToken) {
+    if (!deviceToken) return;
+    try {
+      const res = await fetch(`/api/players/by-token/${encodeURIComponent(deviceToken)}`, {
+        method: "DELETE"
+      });
+      if (res.status === 204 || res.status === 404 || res.status === 409) return;
+    } catch (_) { /* switching still works if cleanup fails */ }
   }
 
   async function ensurePlayer(preferredName) {
-    const deviceToken = getOrCreateDeviceToken();
+    const existingToken = getDeviceToken();
     let name = (preferredName || getPlayerName() || "").trim();
-    if (!name) {
-      name = await askPlayerName();
+
+    if (!existingToken) {
+      const choice = await askWhoIsPlaying();
+      const deviceToken = choice.deviceToken || getOrCreateDeviceToken();
+      return registerPlayer(choice.name, deviceToken);
     }
-    if (name.length > 64) name = name.slice(0, 64);
-    setPlayerName(name);
-    return api("/api/players", {
-      method: "POST",
-      body: JSON.stringify({ name, deviceToken })
-    });
+
+    if (!name) {
+      const choice = await askWhoIsPlaying({ namesOnly: true });
+      name = choice.name;
+    }
+    return registerPlayer(name, existingToken);
+  }
+
+  async function switchPlayer() {
+    const previous = getDeviceToken();
+    if (previous) await retireEmptyPlayer(previous);
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(NAME_KEY);
+    } catch (_) { /* ignore */ }
+    const choice = await askWhoIsPlaying();
+    const deviceToken = choice.deviceToken || getOrCreateDeviceToken();
+    return registerPlayer(choice.name, deviceToken);
   }
 
   async function submitScore(gameId, score, options = {}) {
@@ -697,6 +925,7 @@
     setPlayerName,
     api,
     ensurePlayer,
+    switchPlayer,
     submitScore,
     loadProgress,
     loadAllProgress,

@@ -103,11 +103,9 @@ export function App() {
           Multiplication Pod Racer
         </button>
         <div className="nav-tools">
-          {ARCADE && (
-            <a className="btn ghost small" href="/">
-              Back to Arcade
-            </a>
-          )}
+          <a className="btn ghost small" href="/">
+            Back to Arcade
+          </a>
           {TEST_TOOLS_ENABLED && (
             <label className={`test-rank ${rankOverride ? 'active' : ''}`}>
               {rankOverride ? `TEST RANK ${rankOverride}` : 'Test rank'}

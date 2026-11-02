@@ -20,6 +20,7 @@
         <label for="player-name">Player</label>
         <input id="player-name" name="name" maxlength="64" autocomplete="nickname" placeholder="Your name" />
         <button type="submit">Save</button>
+        <button type="button" id="player-switch" class="switch">Switch</button>
       </form>
     </header>
 
@@ -67,6 +68,7 @@
         getPlayerName,
         setPlayerName,
         ensurePlayer,
+        switchPlayer,
         loadTopScores,
         TOP_SCORES_LIMIT,
         loadAllProgress,
@@ -107,14 +109,28 @@
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const name = nameInput.value.trim() || "Player";
+        const name = nameInput.value.trim();
+        if (!name) {
+          nameInput.value = getPlayerName();
+          return;
+        }
         setPlayerName(name);
         nameInput.value = name;
         try {
           await ensurePlayer(name);
+          nameInput.value = getPlayerName();
           await refreshUnlockStatus();
         } catch (err) {
           alert(err.message || "Could not save player.");
+        }
+      });
+
+      document.getElementById("player-switch").addEventListener("click", async () => {
+        try {
+          await switchPlayer();
+          location.reload();
+        } catch (err) {
+          alert(err.message || "Could not switch player.");
         }
       });
 
@@ -476,7 +492,10 @@
       selectTopic(selectedTopicId);
 
       ensurePlayer(getPlayerName() || undefined)
-        .then(() => refreshUnlockStatus())
+        .then(() => {
+          nameInput.value = getPlayerName();
+          return refreshUnlockStatus();
+        })
         .catch(() => applyUnlockUi());
     })();
   </script>
