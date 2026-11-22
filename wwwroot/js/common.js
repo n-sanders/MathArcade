@@ -92,6 +92,17 @@
       rankMode: "single"
     },
     {
+      id: "doozertowers",
+      title: "Doozer Towers",
+      path: "/games/doozertowers.html",
+      topic: "division",
+      axisIndex: 1,
+      axisLabel: "Fact Families",
+      blurb: "Solve division fact family triangles to help the Doozers raise glowing radish-stick towers. One slip brings a collapse! Climb C→S ranks.",
+      howTo: "Each blueprint shows a multiplication and division fact family triangle with one bottom number missing. Type the missing number on the keypad or keyboard to add another level to the triangular Doozer tower! Five levels in a row triggers a Master Truss bonus, while a wrong answer collapses the tower back to the cavern floor. Rank C covers ÷2, ÷3, ÷5, and ÷10 families (10 levels); B adds ÷4 and ÷6 across both bottom corners (12); A covers all 2–10 families (14); S adds 11–12 families, missing divisors, and a per-level timer (16). Finish 2 shifts at a rank to unlock its 100% Rank-Up Test. Missing a test never drops your rank.",
+      rankMode: "single"
+    },
+    {
       id: "calendar",
       title: "Calendar Scramble",
       path: "/games/calendar.html",
