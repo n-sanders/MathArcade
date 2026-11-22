@@ -92,6 +92,7 @@ Catalog source of truth: `GAMES` in [`wwwroot/js/common.js`](wwwroot/js/common.j
 | Memory Match Math | Match expressions with answers |
 | Clock Shop | Reading and setting analog clocks |
 | Feed the Cats | Doubles subtraction |
+| Factor Rocket | Prime factorization |
 | Dino Dash | Daily bonus endless runner (no math) |
 | Zombie Attack | Daily bonus Galaxian shooter (no math) |
 
