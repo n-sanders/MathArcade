@@ -125,6 +125,17 @@
       rankMode: "single"
     },
     {
+      id: "clockshop",
+      title: "Clock Shop",
+      path: "/games/clockshop.html",
+      topic: "other",
+      axisIndex: 3,
+      axisLabel: "Clocks",
+      blurb: "Read and set analog clocks in a sunlit repair shop. Five in a row rings a Grand Chime! Climb C→S ranks.",
+      howTo: "Customers bring in clocks to read or set. In Read mode, type the time on the keypad (like 430 for 4:30). In Set mode, drag the hands or use the step buttons to match the target time. Five right in a row rings a Grand Chime bonus! Rank C covers hours and half-hours (10 clocks); B adds quarter-hours and worded times (12); A moves to 5-minute marks (14); S adds 1-minute precision, elapsed time, and a per-clock timer (16). Finish 2 shifts at a rank to unlock its 100% rank-up test. Missing a test never drops your rank.",
+      rankMode: "single"
+    },
+    {
       id: "feedthecats",
       title: "Feed the Cats",
       path: "/games/feedthecats.html",

@@ -30,17 +30,6 @@ Dump raw thoughts here; move to **Ideas** when you add a bit of structure.
 - **Open questions:** Standalone game, or a second mode of Calendar Scramble now that month sorting shipped on its own? Input style (multiple choice vs typing)?
 - **Status:** seed
 
-### Clock shop **`[AI]`**
-
-- **Source:** AI-generated (assistant brainstorm, Aug 2026).
-- **Math focus:** Reading/setting analog time — hour, half, quarter, then 5-minute marks; elapsed time as a stretch tier.
-- **Hook / theme:** Run a clock-repair shop: customers bring in stopped clocks plus a digital time; set the hands correctly to fix them.
-- **Core loop:** See a target time (digital or worded — "half past four"); drag the hour/minute hands on an analog face to match.
-- **Win / progress:** Fix N clocks per shift; later shifts introduce quarter hours, 5-minute precision, then worded times.
-- **Difficulty knobs:** hour-only → half → quarter → 5-min; set-the-clock vs read-the-clock (pick the matching digital); minute-hand snapping on/off.
-- **Open questions:** Drag hands directly (fine motor) vs stepper buttons? Pair with Calendar Scramble as a "time literacy" family — shared art/characters?
-- **Status:** promising
-
 ### Fraction feast **`[AI]`**
 
 - **Source:** AI-generated (assistant brainstorm, Aug 2026).
@@ -86,5 +75,6 @@ Good concept, wrong time — note why so future-you remembers.
 Move titles here when they land in `GAMES` so the brainstorm stays honest.
 
 - **Month sorting → Calendar Scramble** (`calendar` in `GAMES`). Shipped with the numbered ordinal stack (1st–12th), not the pie layout; drag-to-slot with wrong-slot bounce (−5 pts). Three rounds per stage, more months missing each stage up to a fully scrambled year.
+- **Clock shop → Clock Shop** (`clockshop` in `GAMES`). Shipped in the `other` topic (`axisIndex: 3`) with mixed Read (keypad/keyboard) and Set (geared draggable SVG hands + steppers) shifts, C→S progression (hours/half-hours → quarter-hours + worded → 5-minute marks → 1-minute precision + elapsed time + per-clock timer), 2-shift Rank-Up Test unlock, and Grand Chime 5-streak bonuses.
 - **Dino Dash** (`bonus` in `GAMES`). Daily bonus endless runner; unlocks after a saved session in 7 catalog math games today.
 - **Zombie Attack** (`bonus2` in `GAMES`). Daily bonus Galaxian clone; same 7-activity unlock as Dino Dash.
